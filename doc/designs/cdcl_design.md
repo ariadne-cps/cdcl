@@ -51,3 +51,11 @@ before the completion callback. A certified theory conflict can therefore
 learn at the root level or trigger a backjump; UNKNOWN still cannot learn.
 SMT's adapter can explicitly skip the duplicate complete theory-consistency
 check because its completion callback performs full numeric certification.
+
+### 2026-10-27 - Include the solver test in the build target
+
+The new `test_cdcl_solver` executable was registered with CTest but omitted
+from the `tests` custom target dependencies. The sanitizer workflow builds
+only `tests`, so CTest found a registered test without a compiled executable.
+The dependency list now includes all three C++ regression executables.
+This is a build-graph correction, not a solver behavior change.
