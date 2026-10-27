@@ -1,0 +1,3 @@
+add_executable(benchmark_cdcl_propagation benchmark_cdcl_propagation.cpp)
+target_link_libraries(benchmark_cdcl_propagation PRIVATE ariadne-cdcl cdcl)
+add_dependencies(benchmarks benchmark_cdcl_propagation)
