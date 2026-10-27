@@ -70,5 +70,37 @@ int main() {
     decisions._backtrack_to_level(0u);
     require(decisions._decision_level()==0u);
     require(decisions._next_unassigned_variable()==0u);
+
+    // An inner backtrack must not discard decisions at its parent level,
+    // and a backtrack to root must retain root-level unit propagations.
+    std::vector<Clause> root_clauses{{BooleanLiteral(0u)}};
+    CoreProbe nested(3u,root_clauses);
+    require(nested._unit_propagate());
+    require(nested._assignment[0u].value==1);
+    nested._push_decision_level();
+    nested._assign_literal(BooleanLiteral(1u));
+    nested._push_decision_level();
+    nested._assign_literal(BooleanLiteral(2u,false));
+    require(nested._decision_level()==2u);
+    nested._backtrack_to_level(1u);
+    require(nested._decision_level()==1u);
+    require(nested._assignment[0u].value==1);
+    require(nested._assignment[1u].value==1);
+    require(nested._assignment[2u].value<0);
+    require(nested._next_unassigned_variable()==2u);
+    nested._backtrack_to_level(1u);
+    require(nested._assignment[1u].value==1);
+    nested._backtrack_to_level(0u);
+    require(nested._decision_level()==0u);
+    require(nested._assignment[0u].value==1);
+    require(nested._assignment[1u].value<0);
+    require(nested._next_unassigned_variable()==1u);
+    require(nested._unit_propagate());
+    require(nested._cdcl_statistics.boolean_propagations==1u);
+
+    Bool rejected_future_level=false;
+    try { nested._backtrack_to_level(1u); }
+    catch(std::out_of_range const&) { rejected_future_level=true; }
+    require(rejected_future_level);
     return 0;
 }

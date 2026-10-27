@@ -79,11 +79,37 @@ int main() {
         require(solver.assignment()[0].value());
     }
     {
+        // All four leaves must be visited. A broken nested backtrack can
+        // erase the parent decision and recurse indefinitely here.
         std::vector<Clause> clauses;
         CdclSolver solver(2u,clauses);
+        SizeType completed_models=0u;
         auto status=solver.solve(nullptr,
-            [](CdclAssignment const&) { return CdclCompletionStatus::REJECTED; });
+            [&completed_models](CdclAssignment const& assignment) {
+                require(assignment[0].has_value());
+                require(assignment[1].has_value());
+                ++completed_models;
+                return CdclCompletionStatus::REJECTED;
+            });
         require(status==CdclSolveStatus::UNSAT);
+        require(completed_models==4u);
+    }
+    {
+        // Root propagation is kept after exploring both branches of the
+        // unrelated decision variable. Only two completions are possible.
+        std::vector<Clause> clauses{{BooleanLiteral(0u)}};
+        CdclSolver solver(2u,clauses);
+        SizeType completed_models=0u;
+        auto status=solver.solve(nullptr,
+            [&completed_models](CdclAssignment const& assignment) {
+                require(assignment[0]==std::optional<Bool>(true));
+                require(assignment[1].has_value());
+                ++completed_models;
+                return CdclCompletionStatus::REJECTED;
+            });
+        require(status==CdclSolveStatus::UNSAT);
+        require(completed_models==2u);
+        require(solver.statistics().boolean_propagations==1u);
     }
     {
         std::vector<Clause> clauses{{BooleanLiteral(1)}};

@@ -334,7 +334,19 @@ Void CdclState::_push_decision_level()
 
 Void CdclState::_backtrack_to_level(SizeType level)
 {
-    SizeType marker=_decision_level_markers[level];
+    SizeType current_level=this->_decision_level();
+    if(level>current_level) {
+        throw std::out_of_range("Cannot backtrack to a future CDCL decision level");
+    }
+    if(level==current_level) {
+        return;
+    }
+
+    // A marker at index k denotes the start of level k, not its end.
+    // To preserve every assignment through 'level', use the start of
+    // level+1. In particular, root-level unit propagations survive a
+    // backtrack to level zero.
+    SizeType marker=_decision_level_markers[level+1u];
     while(_trail.size()>marker) {
         SizeType variable=_trail.back();
         _trail.pop_back();

@@ -59,3 +59,23 @@ from the `tests` custom target dependencies. The sanitizer workflow builds
 only `tests`, so CTest found a registered test without a compiled executable.
 The dependency list now includes all three C++ regression executables.
 This is a build-graph correction, not a solver behavior change.
+
+### 2026-10-27 - Fix nested backtracking and preserve root propagation
+
+ThreadSanitizer exposed an unbounded recursive search in `test_cdcl_solver`
+after the missing test target had been added to the build. The cause was an
+architectural backtracking error in `CdclState::_backtrack_to_level`: a
+decision-level marker records the *beginning* of that level, not the end.
+Using `markers[level]` when returning to `level` also erased that level's
+decision and propagations, so an ancestor could repeatedly choose the same
+variable and eventually overflow the stack.
+
+The rollback boundary is now `markers[level+1]` when moving from a higher
+level to the requested lower level. This preserves all assignments at and below
+the target level, including root unit propagations. Backtracking to the
+current level is a no-op, and backtracking to a future level is rejected.
+
+Targeted regressions cover nested levels, root propagation retention, and
+exhaustive completion-callback rejection with exact leaf counts, rather than
+merely accepting the absence of a crash. No recursion-depth limit, sanitizer
+suppression or test weakening was introduced.
