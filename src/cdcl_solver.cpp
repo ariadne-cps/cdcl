@@ -110,19 +110,6 @@ CdclSolver::SearchOutcome CdclSolver::_search_boolean()
     }
 
     SizeType variable=this->_next_unassigned_variable();
-    if(variable==_variable_count) {
-        CdclCompletionStatus complete=_complete
-            ? _complete(this->assignment())
-            : CdclCompletionStatus::CERTIFIED;
-        if(complete==CdclCompletionStatus::CERTIFIED) {
-            return SearchOutcome::satisfied();
-        }
-        if(complete==CdclCompletionStatus::UNKNOWN) {
-            _encountered_unknown=true;
-        }
-        return SearchOutcome::exhausted();
-    }
-
     if(_theory!=nullptr) {
         CdclAssignment current=this->assignment();
         CdclTheoryFeedback feedback=_theory->check_partial(current);
@@ -134,6 +121,19 @@ CdclSolver::SearchOutcome CdclSolver::_search_boolean()
         if(feedback.status()==CdclTheoryStatus::UNKNOWN) {
             _encountered_unknown=true;
         }
+    }
+
+    if(variable==_variable_count) {
+        CdclCompletionStatus complete=_complete
+            ? _complete(this->assignment())
+            : CdclCompletionStatus::CERTIFIED;
+        if(complete==CdclCompletionStatus::CERTIFIED) {
+            return SearchOutcome::satisfied();
+        }
+        if(complete==CdclCompletionStatus::UNKNOWN) {
+            _encountered_unknown=true;
+        }
+        return SearchOutcome::exhausted();
     }
 
     ++_cdcl_statistics.boolean_decisions;

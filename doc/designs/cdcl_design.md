@@ -40,3 +40,14 @@ The solver is single-shot: a second call raises `logic_error`; the original
 clauses remain a borrowed, immutable reference and must outlive the solver.
 New tests check SAT, UNSAT, zero-variable formulas, typed assignments,
 explained conflicts, unknown results and completion callbacks.
+
+### Complete assignments must consult the theory oracle (2026-10-27)
+
+The initial common solver short-circuited at a complete Boolean assignment
+before checking the attached theory oracle. This is incorrect for a general
+CDCL(T) user because a theory conflict may be present even when every
+Boolean variable has been assigned. The theory callback is now invoked
+before the completion callback. A certified theory conflict can therefore
+learn at the root level or trigger a backjump; UNKNOWN still cannot learn.
+SMT's adapter can explicitly skip the duplicate complete theory-consistency
+check because its completion callback performs full numeric certification.
