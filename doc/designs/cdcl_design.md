@@ -79,3 +79,9 @@ Targeted regressions cover nested levels, root propagation retention, and
 exhaustive completion-callback rejection with exact leaf counts, rather than
 merely accepting the absence of a crash. No recursion-depth limit, sanitizer
 suppression or test weakening was introduced.
+
+### 2026-10-27 - Normalize source headers
+
+All CDCL C++ sources and headers now use the established full Ariadne GPL
+license notice and Doxygen file banners, matching SMT's canonical header.
+This formatting-only change does not affect solver semantics or test coverage.
