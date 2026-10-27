@@ -172,18 +172,18 @@ int main() {
     delayed._assign_literal(BooleanLiteral(1u));
     delayed._push_decision_level();
     delayed._assign_literal(BooleanLiteral(2u,false));
-    const SizeType learned=delayed._add_learned_clause({
+    const SizeType delayed_learned=delayed._add_learned_clause({
         BooleanLiteral(0u,false),
         BooleanLiteral(1u,false),
         BooleanLiteral(2u)});
     require(not delayed._unit_propagate());
-    require(delayed._last_boolean_conflict_clause==learned);
+    require(delayed._last_boolean_conflict_clause==delayed_learned);
     delayed._backtrack_to_level(1u);
     require(delayed._unit_propagate());
     require(delayed._assignment[2u].value==1);
-    require(delayed._assignment[2u].reason_clause==std::optional<SizeType>(learned));
-    require(delayed._watched_positions[learned][0u]==2u
-        or delayed._watched_positions[learned][1u]==2u);
+    require(delayed._assignment[2u].reason_clause==std::optional<SizeType>(delayed_learned));
+    require(delayed._watched_positions[delayed_learned][0u]==2u
+        or delayed._watched_positions[delayed_learned][1u]==2u);
 
     // Repeated literals are semantically unit, whereas a tautological
     // binary clause must never force an assignment.

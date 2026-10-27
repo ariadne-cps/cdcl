@@ -119,3 +119,11 @@ false literals of a freshly learned clause while its asserting literal is
 unassigned. A regression verifies that a ternary conflict learned under a
 fully falsifying assignment becomes unit after backjump, retaining the
 correct reason and watching the newly available literal.
+
+### 2026-10-27 - Fix repeated local identifier in watched-literal regression
+
+The new `test_cdcl_state` scenario used `learned` for a second clause
+index inside the same `main()` scope. Clang (with warnings as errors)
+reported a redefinition before tests could execute. Renamed only the
+new scenario's local index to `delayed_learned` and updated its assertions;
+the test scenario and production propagation algorithm are unchanged.
