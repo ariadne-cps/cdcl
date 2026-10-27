@@ -4,9 +4,16 @@ Reusable C++20 propositional CDCL state and a theory-solver feedback contract,
 extracted from the validated Boolean engine in [ariadne-cps/smt](https://github.com/ariadne-cps/smt).
 The repository is independent of numerical SMT and BDD implementation details.
 
-**Status:** standalone Boolean propagation, learned-clause state and 1-UIP
-conflict analysis; not yet a complete autonomous SAT solver. Clause database
+**Status:** complete basic recursive CDCL search with unit propagation,
+1-UIP learning, nonchronological backjumping, and optional theory feedback. Clause database
 reduction, watched literals, and restarting are not implemented.
+
+## Solver
+
+`CdclSolver` solves propositional CNF without a theory oracle and returns
+`SAT` or `UNSAT`. The optional `CdclTheory` partial-check callback and
+`CdclCompletionCallback` allow SMT to distinguish certified witnesses,
+proved rejection and inconclusive numerical checks.
 
 ## Interface
 

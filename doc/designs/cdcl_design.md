@@ -24,3 +24,19 @@ Dependencies: configuration + utility, optional python-common.
 Unit tests exercise propagation, backtrack, learned clauses, typed literals
 and theory-feedback validation. Benchmarks and independent installed C++/Python
 tutorials are provided. All CI workflows follow the current Ariadne matrix.
+
+## Complete Boolean search moved out of SMT (2026-10-27)
+
+`CdclSolver` now owns the recursive decision search, theory conflict
+integration, first-UIP learning, nonchronological backjumping and full-model
+completion. It reuses the unchanged `CdclState` primitives. A caller may
+supply a `CdclTheory` and a complete-assignment callback; pure SAT requires
+neither. The completion callback returns `CERTIFIED` (valid witness),
+`REJECTED` (proven infeasible) or `UNKNOWN` (inconclusive).
+An UNKNOWN partial/complete check never produces a learned clause and cannot
+be reported as UNSAT if the search finishes without a certified model.
+
+The solver is single-shot: a second call raises `logic_error`; the original
+clauses remain a borrowed, immutable reference and must outlive the solver.
+New tests check SAT, UNSAT, zero-variable formulas, typed assignments,
+explained conflicts, unknown results and completion callbacks.

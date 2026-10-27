@@ -17,5 +17,9 @@ int main() {
     auto unknown=CdclTheoryFeedback::unknown();
     validate_cdcl_theory_feedback(unknown,assignment);
     std::cout<<"UNKNOWN is not a Boolean conflict\n";
+    std::vector<BooleanClause> clauses{{BooleanLiteral(0u)}};
+    CdclSolver solver(1u,clauses);
+    if(solver.solve()!=CdclSolveStatus::SAT) { return 1; }
+    std::cout<<"A satisfiable CNF was solved\n";
     return 0;
 }
