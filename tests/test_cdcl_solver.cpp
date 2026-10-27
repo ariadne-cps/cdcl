@@ -28,6 +28,7 @@
 
 #include <stdexcept>
 #include <vector>
+#include <cstdint>
 #include "cdcl/cdcl_solver.hpp"
 
 using namespace Ariadne;
@@ -138,6 +139,54 @@ int main() {
         require(status==CdclSolveStatus::UNSAT);
         require(completed_models==2u);
         require(solver.statistics().boolean_propagations==1u);
+    }
+    {
+        // Differential oracle against complete truth-table enumeration:
+        // every generated instance is checked for both status and witness.
+        // Include empty, repeated, tautological, and ternary clauses.
+        for(SizeType seed=0u;seed<256u;++seed) {
+            std::vector<Clause> clauses;
+            for(SizeType j=0u;j<7u;++j) {
+                SizeType code=(seed*29u+j*17u+seed*j*3u)%343u;
+                Clause clause;
+                SizeType length=code%4u;
+                code/=4u;
+                for(SizeType k=0u;k<length;++k) {
+                    SizeType v=(code+2u*k)%3u;
+                    Bool positive=((code>>(k+1u))&1u)!=0u;
+                    clause.emplace_back(v,positive);
+                }
+                clauses.push_back(clause);
+            }
+            Bool expected_sat=false;
+            for(SizeType bits=0u;bits<8u;++bits) {
+                Bool all_clauses=true;
+                for(Clause const& clause:clauses) {
+                    Bool clause_true=false;
+                    for(BooleanLiteral literal:clause) {
+                        Bool value=((bits>>literal.variable())&1u)!=0u;
+                        clause_true=clause_true or value==literal.positive();
+                    }
+                    all_clauses=all_clauses and clause_true;
+                }
+                expected_sat=expected_sat or all_clauses;
+            }
+            CdclSolver solver(3u,clauses);
+            auto result=solver.solve();
+            require((result==CdclSolveStatus::SAT)==expected_sat);
+            if(result==CdclSolveStatus::SAT) {
+                CdclAssignment assignment=solver.assignment();
+                for(Clause const& clause:clauses) {
+                    Bool clause_true=false;
+                    for(BooleanLiteral literal:clause) {
+                        require(assignment[literal.variable()].has_value());
+                        clause_true=clause_true or
+                            (*assignment[literal.variable()]==literal.positive());
+                    }
+                    require(clause_true);
+                }
+            }
+        }
     }
     {
         std::vector<Clause> clauses{{BooleanLiteral(1)}};

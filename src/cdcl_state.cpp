@@ -29,6 +29,7 @@
 #include "cdcl/cdcl_state.hpp"
 
 #include <algorithm>
+#include <stdexcept>
 
 namespace Ariadne {
 
@@ -38,11 +39,17 @@ CdclState::CdclState(SizeType variable_count,
     : _variable_count(variable_count),
       _original_clauses(original_clauses),
       _learned_clause_limit(learned_clause_limit),
-      _assignment(variable_count)
+      _assignment(variable_count),
+      _watch_lists(variable_count*2u)
 {
     _trail.reserve(variable_count);
     _decision_level_markers.reserve(variable_count+1u);
     _decision_level_markers.push_back(0u);
+    _watched_positions.reserve(original_clauses.size());
+    _pending_clauses.reserve(original_clauses.size());
+    for(SizeType index=0u;index<original_clauses.size();++index) {
+        this->_register_clause_watchers(index);
+    }
 }
 
 Bool CdclState::_literal_true(BooleanLiteral literal) const
@@ -90,6 +97,7 @@ Bool CdclState::_is_learned_clause(SizeType index) const
 SizeType CdclState::_add_learned_clause(std::vector<BooleanLiteral> const& clause, Bool theory_clause)
 {
     _learned_clauses.emplace_back(clause.begin(),clause.end());
+    this->_register_clause_watchers(this->_clause_count()-1u);
     _learned_clause_is_theory.push_back(theory_clause);
     _learned_clause_activity.push_back(1u);
     _learned_clause_generation.push_back(_cdcl_statistics.learned_clauses);
@@ -184,53 +192,154 @@ Void CdclState::_maybe_prune_learned_clauses(SizeType protected_clause)
     (void)candidates;
 }
 
+SizeType CdclState::_literal_watch_index(BooleanLiteral literal) const
+{
+    return 2u*literal.variable()+(literal.positive() ? 0u : 1u);
+}
+
+Void CdclState::_register_clause_watchers(SizeType clause_index)
+{
+    auto const& clause=this->_clause(clause_index);
+    for(BooleanLiteral literal:clause) {
+        if(literal.variable()>=_variable_count) {
+            throw std::out_of_range("CDCL clause uses an undeclared Boolean variable");
+        }
+    }
+
+    // Install watches only when processing the pending clause. A learned
+    // clause can be conflicting at insertion and become unit after a
+    // nonchronological backjump; watches must reflect the latter trail.
+    _watched_positions.push_back({0u,0u});
+    _pending_clauses.push_back(clause_index);
+}
+
+Void CdclState::_assign_propagated_literal(BooleanLiteral literal,SizeType clause_index)
+{
+    this->_assign_literal(literal,clause_index);
+    ++_cdcl_statistics.boolean_propagations;
+    ++_cdcl_statistics.boolean_reasoned_propagations;
+    if(this->_is_learned_clause(clause_index)) {
+        this->_bump_learned_clause_activity(clause_index);
+        ++_cdcl_statistics.learned_clause_propagations;
+        if(this->_is_theory_learned_clause(clause_index)) {
+            ++_cdcl_statistics.theory_learned_clause_propagations;
+        }
+    }
+}
+
+Bool CdclState::_report_boolean_conflict(SizeType clause_index)
+{
+    ++_cdcl_statistics.boolean_conflicts;
+    this->_bump_learned_clause_activity(clause_index);
+    _last_boolean_conflict_clause=clause_index;
+    return false;
+}
+
+Bool CdclState::_process_pending_clause(SizeType clause_index)
+{
+    auto const& clause=this->_clause(clause_index);
+    Bool satisfied=false;
+    std::optional<BooleanLiteral> unit;
+    Bool only_one_distinct_unassigned=true;
+
+    for(BooleanLiteral literal:clause) {
+        if(this->_literal_true(literal)) {
+            satisfied=true;
+        } else if(_assignment[literal.variable()].value<0) {
+            if(not unit.has_value()) {
+                unit=literal;
+            } else if(literal!=*unit) {
+                only_one_distinct_unassigned=false;
+            }
+        }
+    }
+    if(not satisfied and not unit.has_value()) {
+        // Leave this clause pending so it can be registered and propagated
+        // against the retained trail after conflict analysis and backjump.
+        return this->_report_boolean_conflict(clause_index);
+    }
+
+    if(clause.size()>=2u) {
+        // Choose two different literal positions, preferring non-false
+        // literals. This is intentionally delayed until after backjump.
+        std::array<SizeType,2> watched{0u,1u};
+        SizeType nonfalse=0u;
+        for(SizeType i=0u;i<clause.size() and nonfalse<2u;++i) {
+            BooleanLiteral literal=clause[i];
+            if(_assignment[literal.variable()].value<0 or this->_literal_true(literal)) {
+                watched[nonfalse++]=i;
+            }
+        }
+        if(nonfalse==0u) {
+            watched={0u,1u};
+        } else if(nonfalse==1u) {
+            watched[1u]=(watched[0u]==0u ? 1u : 0u);
+        }
+        _watched_positions[clause_index]=watched;
+        _watch_lists[this->_literal_watch_index(clause[watched[0u]])].push_back(clause_index);
+        _watch_lists[this->_literal_watch_index(clause[watched[1u]])].push_back(clause_index);
+    }
+
+    if(not satisfied and only_one_distinct_unassigned) {
+        this->_assign_propagated_literal(*unit,clause_index);
+    }
+    return true;
+}
+
 Bool CdclState::_unit_propagate()
 {
     _last_boolean_conflict_clause.reset();
-    Bool changed=true;
-    while(changed) {
-        changed=false;
-        for(SizeType clause_index=0u; clause_index<this->_clause_count(); ++clause_index) {
-            auto const& clause=this->_clause(clause_index);
-            Bool satisfied=false;
-            SizeType unassigned_count=0u;
-            std::optional<BooleanLiteral> unit_literal;
 
-            for(BooleanLiteral literal:clause) {
-                SizeType variable=literal.variable();
-                int8_t value=_assignment[variable].value;
-                if(value<0) {
-                    ++unassigned_count;
-                    unit_literal=literal;
-                } else if(this->_literal_true(literal)) {
-                    satisfied=true;
-                    break;
-                }
-            }
+    while(_pending_head<_pending_clauses.size()) {
+        SizeType index=_pending_clauses[_pending_head];
+        if(not this->_process_pending_clause(index)) {
+            return false;
+        }
+        ++_pending_head;
+    }
+    _pending_clauses.clear();
+    _pending_head=0u;
 
-            if(satisfied) {
+    while(_propagation_head<_trail.size()) {
+        SizeType variable=_trail[_propagation_head++];
+        BooleanLiteral falsified(variable,_assignment[variable].value==0);
+        SizeType watch_index=this->_literal_watch_index(falsified);
+        auto& watchlist=_watch_lists[watch_index];
+
+        SizeType position=0u;
+        while(position<watchlist.size()) {
+            SizeType index=watchlist[position];
+            auto const& clause=this->_clause(index);
+            auto& watched=_watched_positions[index];
+            SizeType slot=(clause[watched[0u]]==falsified) ? 0u : 1u;
+            BooleanLiteral other_literal=clause[watched[1u-slot]];
+
+            if(this->_literal_true(other_literal)) {
+                ++position;
                 continue;
             }
 
-            if(unassigned_count==0u) {
-                ++_cdcl_statistics.boolean_conflicts;
-                this->_bump_learned_clause_activity(clause_index);
-                _last_boolean_conflict_clause=clause_index;
-                return false;
-            }
-
-            if(unassigned_count==1u) {
-                this->_assign_literal(*unit_literal,clause_index);
-                ++_cdcl_statistics.boolean_propagations;
-                ++_cdcl_statistics.boolean_reasoned_propagations;
-                if(this->_is_learned_clause(clause_index)) {
-                    this->_bump_learned_clause_activity(clause_index);
-                    ++_cdcl_statistics.learned_clause_propagations;
-                    if(this->_is_theory_learned_clause(clause_index)) {
-                        ++_cdcl_statistics.theory_learned_clause_propagations;
-                    }
+            Bool moved=false;
+            for(SizeType i=0u;i<clause.size();++i) {
+                if(i==watched[0u] or i==watched[1u]) continue;
+                BooleanLiteral candidate=clause[i];
+                if(_assignment[candidate.variable()].value<0
+                    or this->_literal_true(candidate)) {
+                    watched[slot]=i;
+                    _watch_lists[this->_literal_watch_index(candidate)].push_back(index);
+                    watchlist[position]=watchlist.back();
+                    watchlist.pop_back();
+                    moved=true;
+                    break;
                 }
-                changed=true;
+            }
+            if(moved) continue;
+
+            if(_assignment[other_literal.variable()].value<0) {
+                this->_assign_propagated_literal(other_literal,index);
+                ++position;
+            } else {
+                return this->_report_boolean_conflict(index);
             }
         }
     }
@@ -370,6 +479,9 @@ Void CdclState::_backtrack_to_level(SizeType level)
         _assignment[variable]=AssignmentInfo();
     }
     _decision_level_markers.resize(level+1u);
+    if(_propagation_head>_trail.size()) {
+        _propagation_head=_trail.size();
+    }
 }
 
 

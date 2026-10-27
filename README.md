@@ -1,52 +1,82 @@
 # Ariadne CDCL
 
-Reusable C++20 propositional CDCL state and a theory-solver feedback contract,
-extracted from the validated Boolean engine in [ariadne-cps/smt](https://github.com/ariadne-cps/smt).
-The repository is independent of numerical SMT and BDD implementation details.
+[![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![Unix Status](https://github.com/ariadne-cps/cdcl/actions/workflows/unix.yml/badge.svg)](https://github.com/ariadne-cps/cdcl/actions/workflows/unix.yml)
+[![Windows Status](https://github.com/ariadne-cps/cdcl/actions/workflows/win.yml/badge.svg)](https://github.com/ariadne-cps/cdcl/actions/workflows/win.yml)
+[![Sanitizers Status](https://github.com/ariadne-cps/cdcl/actions/workflows/sanitizers.yml/badge.svg)](https://github.com/ariadne-cps/cdcl/actions/workflows/sanitizers.yml)
+[![Coverage Status](https://github.com/ariadne-cps/cdcl/actions/workflows/coverage.yml/badge.svg)](https://github.com/ariadne-cps/cdcl/actions/workflows/coverage.yml)
+[![codecov](https://codecov.io/gh/ariadne-cps/cdcl/branch/main/graph/badge.svg)](https://codecov.io/gh/ariadne-cps/cdcl)
 
-**Status:** complete basic recursive CDCL search with unit propagation,
-1-UIP learning, nonchronological backjumping, and optional theory feedback. Clause database
-reduction, watched literals, and restarting are not implemented.
+Ariadne CDCL is the standalone C++20 **conflict-driven clause-learning** engine
+used by [Ariadne SAT](https://github.com/ariadne-cps/sat) and
+[Ariadne SMT](https://github.com/ariadne-cps/smt). It provides Boolean literals,
+CNF propagation using two watched literals, conflict analysis with 1-UIP
+learning, nonchronological backjumping, and an optional theory-feedback contract.
+It has no dependency on BDD or numerical SMT libraries.
 
-## Solver
+## Layout
 
-`CdclSolver` solves propositional CNF without a theory oracle and returns
-`SAT` or `UNSAT`. The optional `CdclTheory` partial-check callback and
-`CdclCompletionCallback` allow SMT to distinguish certified witnesses,
-proved rejection and inconclusive numerical checks.
+Public headers are under `include/cdcl`, with umbrella header
+`include/ariadne-cdcl.hpp`. Implementations are under `src`, C++
+regression tests under `tests`, performance benchmarks under `benchmarks`,
+Python bindings and tests under `python`, independent examples under
+`tutorials`, and the implementation journal under
+[`doc/designs/cdcl_design.md`](doc/designs/cdcl_design.md).
 
-## Interface
+## Solver and theory integration
 
-`BooleanLiteral(variable,positive)` uses zero-based logical variable indices.
-DIMACS import/export is explicitly one-based via `from_dimacs()` / `dimacs()`.
+`CdclSolver` solves propositional CNF with exact `SAT`/`UNSAT` results.
+It is currently **single-shot**: construct a fresh solver for each search.
+`BooleanLiteral(variable,positive)` uses zero-based variable indices;
+`from_dimacs()` and `dimacs()` use signed one-based DIMACS literals.
 
-`CdclTheory::check_partial(CdclAssignment const&)` returns:
-- `CONSISTENT`: partial theory constraints not disproved, **not** a witness;
-- `CONFLICT`: a theory-entailment explanation clause, falsified by the
-  current Boolean assignment; an empty clause is allowed only for a global
-  contradiction;
-- `UNKNOWN`: inconclusive, **never** usable for clause learning or UNSAT.
+For SMT integration, the optional `CdclTheory::check_partial()` returns
+`CONSISTENT`, `CONFLICT` with a currently falsified explanation clause,
+or `UNKNOWN`. Only a sound theory-entailment explanation permits learning.
+`UNKNOWN` never becomes UNSAT. Complete assignments can be checked with
+`CdclCompletionCallback`, which distinguishes certified witnesses, proved
+rejection, and inconclusive results. Structural explanation validation does
+not prove theory entailment; that remains the theory solver's responsibility.
 
-`validate_cdcl_theory_feedback()` checks structural consistency and that
-every conflict literal is assigned false. It does **not** establish logical
-validity of the explanation, which is the theory solver's responsibility.
+The engine uses two-watched-literal propagation. Clause-database reduction
+and solver restarts are not yet implemented.
 
 ## Dependencies
 
-Direct Git submodules: `configuration`, `utility`, and (for optional
-Python bindings) `python-common`. No dependence on `smt`, `sat`,
-`bdd`, or numerical libraries.
+CDCL depends directly on:
+
+- [ariadne-cps/utility](https://github.com/ariadne-cps/utility) (Git submodule).
+- [ariadne-cps/configuration](https://github.com/ariadne-cps/configuration) (shared build configuration).
+- [ariadne-cps/python-common](https://github.com/ariadne-cps/python-common) (optional Python binding infrastructure).
+
+Utility supplies the lower Ariadne dependencies transitively.
 
 ## Build
 
 ```bash
 git clone --recurse-submodules https://github.com/ariadne-cps/cdcl.git
-cmake -S cdcl -B cdcl/build -DCMAKE_BUILD_TYPE=Debug
-cmake --build cdcl/build --target everything --parallel
-ctest --test-dir cdcl/build --output-on-failure
+cd cdcl
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --parallel --target everything
+ctest --test-dir build --output-on-failure
 ```
 
-The repository follows the Ariadne Unix/Windows/coverage/sanitizer CI matrix.
-Installed C++ and Python tutorials test packaging. Python 3.11+ is optional;
-set `-DBUILD_PYTHON_BINDINGS=OFF` for a C++-only build.
-See [design journal](doc/designs/cdcl_design.md).
+For a C++-only build, configure with `-DBUILD_PYTHON_BINDINGS=OFF`.
+
+## Python bindings
+
+When a compatible Python development environment is available, the
+standalone build exposes `BooleanLiteral`, theory-feedback statuses,
+`CdclTheoryFeedback` and feedback validation in the combined
+`pyariadne` extension. The autonomous `CdclSolver` search is currently
+a C++ API, not a standalone Python solver binding.
+
+## Contribution guidelines
+
+If you would like to contribute to Ariadne CDCL, please contact the developer:
+
+- Luca Geretti <luca.geretti@univr.it>
+
+## License
+
+Ariadne CDCL is released under the GNU General Public License v3.0.

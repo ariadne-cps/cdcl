@@ -85,3 +85,37 @@ suppression or test weakening was introduced.
 All CDCL C++ sources and headers now use the established full Ariadne GPL
 license notice and Doxygen file banners, matching SMT's canonical header.
 This formatting-only change does not affect solver semantics or test coverage.
+
+### 2026-10-27 - Two-watched-literal event propagation
+
+The initial fixed-point propagator re-scanned all original and learned
+clauses for every new unit. It is replaced by two watched positions per
+non-unit clause, with literal-indexed watchlists and an event cursor into
+the implication trail. A newly falsified watched literal triggers only
+its attached clauses; watchers move to a different non-false literal when
+possible, otherwise detect a unit or report a conflict. Stable numeric
+clause indices preserve implication reasons and 1-UIP resolution across
+vector reallocations, and watchers need no modification on backtrack.
+
+The initial clause database is checked once. A separate pending-clause
+queue handles new Boolean and theory-learned clauses *after backjump*, when
+a clause may already be unit under assignments that were propagated before
+its insertion. The pending head is deliberately retained after a conflict
+so an unprocessed clause cannot be lost. Root-level unit assignments,
+conflict statistics, learned/theory reason statistics and UNKNOWN semantics
+remain unchanged. The learned clause reduction mechanism is still only
+candidate selection, so no watch-list removal or physical clause deletion
+has been introduced.
+
+Targeted tests verify watched-literal relocation, implication reasons,
+learned theory-clause propagation after backjump, repeated literals,
+tautologies and empty-clause conflicts. An additional independent
+256-instance truth-table oracle checks generated small CNFs, statuses and
+total SAT witnesses. The previous CDCL solver regressions remain intact.
+
+The watch registration is deferred until the pending clause is checked
+against its post-backjump assignment. This avoids watching two already
+false literals of a freshly learned clause while its asserting literal is
+unassigned. A regression verifies that a ternary conflict learned under a
+fully falsifying assignment becomes unit after backjump, retaining the
+correct reason and watching the newly available literal.

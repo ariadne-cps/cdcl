@@ -56,6 +56,9 @@ class CoreProbe : public CdclState {
     using CdclState::_cdcl_statistics;
     using CdclState::_assignment;
     using CdclState::_last_boolean_conflict_clause;
+    using CdclState::_watch_lists;
+    using CdclState::_watched_positions;
+    using CdclState::_propagation_head;
 };
 }
 
@@ -123,5 +126,78 @@ int main() {
     try { nested._backtrack_to_level(1u); }
     catch(std::out_of_range const&) { rejected_future_level=true; }
     require(rejected_future_level);
+
+    // Watch movement: a falsified watch moves to a third literal.
+    // A second false decision then forces that third literal.
+    std::vector<Clause> ternary{{
+        BooleanLiteral(0u),BooleanLiteral(1u),BooleanLiteral(2u)}};
+    CoreProbe watched(3u,ternary);
+    require(watched._unit_propagate());
+    watched._push_decision_level();
+    watched._assign_literal(BooleanLiteral(0u,false));
+    require(watched._unit_propagate());
+    require(watched._watched_positions[0u][0u]==2u);
+    watched._assign_literal(BooleanLiteral(1u,false));
+    require(watched._unit_propagate());
+    require(watched._assignment[2u].value==1);
+    require(watched._assignment[2u].reason_clause==std::optional<SizeType>(0u));
+    require(watched._cdcl_statistics.boolean_propagations==1u);
+    require(watched._propagation_head==3u);
+
+    // After a backjump, a newly learned clause must be inspected even
+    // when no retained assignment generates a fresh watch event.
+    std::vector<Clause> fixed_root{{BooleanLiteral(0u)}};
+    CoreProbe learning(2u,fixed_root);
+    require(learning._unit_propagate());
+    learning._push_decision_level();
+    learning._assign_literal(BooleanLiteral(1u,false));
+    const SizeType theory_clause=learning._add_learned_clause({
+        BooleanLiteral(0u,false),BooleanLiteral(1u)},true);
+    require(not learning._unit_propagate());
+    require(learning._last_boolean_conflict_clause==theory_clause);
+    learning._backtrack_to_level(0u);
+    require(learning._unit_propagate());
+    require(learning._assignment[0u].value==1);
+    require(learning._assignment[1u].value==1);
+    require(learning._assignment[1u].reason_clause==std::optional<SizeType>(theory_clause));
+    require(learning._cdcl_statistics.theory_learned_clause_propagations==1u);
+
+    // A conflict clause inserted at decision level two has every
+    // literal false. After jumping to level one, its third literal
+    // becomes unit, and one of its watches must follow that literal.
+    std::vector<Clause> none;
+    CoreProbe delayed(3u,none);
+    delayed._push_decision_level();
+    delayed._assign_literal(BooleanLiteral(0u));
+    delayed._assign_literal(BooleanLiteral(1u));
+    delayed._push_decision_level();
+    delayed._assign_literal(BooleanLiteral(2u,false));
+    const SizeType learned=delayed._add_learned_clause({
+        BooleanLiteral(0u,false),
+        BooleanLiteral(1u,false),
+        BooleanLiteral(2u)});
+    require(not delayed._unit_propagate());
+    require(delayed._last_boolean_conflict_clause==learned);
+    delayed._backtrack_to_level(1u);
+    require(delayed._unit_propagate());
+    require(delayed._assignment[2u].value==1);
+    require(delayed._assignment[2u].reason_clause==std::optional<SizeType>(learned));
+    require(delayed._watched_positions[learned][0u]==2u
+        or delayed._watched_positions[learned][1u]==2u);
+
+    // Repeated literals are semantically unit, whereas a tautological
+    // binary clause must never force an assignment.
+    std::vector<Clause> duplicates{{BooleanLiteral(0u),BooleanLiteral(0u)},
+                                  {BooleanLiteral(1u),BooleanLiteral(1u,false)}};
+    CoreProbe repeated(2u,duplicates);
+    require(repeated._unit_propagate());
+    require(repeated._assignment[0u].value==1);
+    require(repeated._assignment[1u].value<0);
+    require(repeated._cdcl_statistics.boolean_propagations==1u);
+
+    std::vector<Clause> empty{{}};
+    CoreProbe contradictory(0u,empty);
+    require(not contradictory._unit_propagate());
+    require(contradictory._last_boolean_conflict_clause==std::optional<SizeType>(0u));
     return 0;
 }

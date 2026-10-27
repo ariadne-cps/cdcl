@@ -29,6 +29,7 @@
 #ifndef ARIADNE_CDCL_STATE_HPP
 #define ARIADNE_CDCL_STATE_HPP
 
+#include <array>
 #include <cstdint>
 #include <optional>
 #include <vector>
@@ -106,6 +107,14 @@ class CdclState {
 
     Bool _unit_propagate();
 
+    // Each non-unit clause watches two literal positions. The watch lists
+    // store stable original/learned clause indices (never clause pointers).
+    SizeType _literal_watch_index(BooleanLiteral literal) const;
+    Void _register_clause_watchers(SizeType clause_index);
+    Bool _process_pending_clause(SizeType clause_index);
+    Void _assign_propagated_literal(BooleanLiteral literal,SizeType clause_index);
+    Bool _report_boolean_conflict(SizeType clause_index);
+
     Bool _clause_contains_variable(std::vector<BooleanLiteral> const& clause, SizeType variable) const;
 
     SizeType _current_level_literal_count(std::vector<BooleanLiteral> const& clause) const;
@@ -137,6 +146,11 @@ class CdclState {
     std::vector<SizeType> _learned_clause_activity;
     std::vector<SizeType> _learned_clause_generation;
     std::optional<SizeType> _last_boolean_conflict_clause;
+    std::vector<std::array<SizeType,2>> _watched_positions;
+    std::vector<std::vector<SizeType>> _watch_lists;
+    std::vector<SizeType> _pending_clauses;
+    SizeType _pending_head = 0u;
+    SizeType _propagation_head = 0u;
     CdclStatistics _cdcl_statistics;
 };
 
