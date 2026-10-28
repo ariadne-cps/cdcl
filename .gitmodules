@@ -1,9 +1,9 @@
-[submodule "ss/configuration"]
-	path = ss/configuration
+[submodule "cfg"]
+	path = ss/cfg
 	url = https://github.com/ariadne-cps/configuration
-[submodule "ss/utility"]
-	path = ss/utility
+[submodule "uti"]
+	path = ss/uti
 	url = https://github.com/ariadne-cps/utility
-[submodule "ss/python-common"]
-	path = ss/python-common
+[submodule "pyt"]
+	path = ss/pyt
 	url = https://github.com/ariadne-cps/python-common

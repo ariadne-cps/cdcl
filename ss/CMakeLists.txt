@@ -1,9 +1,7 @@
 if(NOT TARGET utility)
-    ensure_submodule_initialized(utility)
-    add_subdirectory(utility)
+    ariadne_add_submodule(utility)
 endif()
 
 if(BUILD_PYTHON_BINDINGS AND NOT TARGET pyariadne-python-common)
-    ensure_submodule_initialized(python-common)
-    add_subdirectory(python-common)
+    ariadne_add_submodule(python-common)
 endif()
