@@ -270,9 +270,9 @@ Bool CdclState::_process_pending_clause(SizeType clause_index)
                 watched[nonfalse++]=i;
             }
         }
-        if(nonfalse==0u) {
-            watched={0u,1u};
-        } else if(nonfalse==1u) {
+        // The conflict guard above ensures at least one non-false literal:
+        // either a satisfying literal or an unassigned one was found.
+        if(nonfalse==1u) {
             watched[1u]=(watched[0u]==0u ? 1u : 0u);
         }
         _watched_positions[clause_index]=watched;
