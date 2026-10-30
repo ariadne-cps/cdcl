@@ -1,3 +1,7 @@
+if(NOT TARGET utility)
+    ariadne_add_submodule(utility)
+endif()
+
 if(NOT TARGET threading)
     ariadne_add_submodule(threading)
 endif()

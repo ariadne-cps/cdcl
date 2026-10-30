@@ -20,7 +20,13 @@ if(EXISTS "${PROJECT_SOURCE_DIR}/.git")
     require_same_dependency_commit(Configuration
         CHAINS
             "configuration"
+            "utility|configuration"
             "threading|configuration"
+    )
+    require_same_dependency_commit(Utility
+        CHAINS
+            "utility"
+            "threading|logging|utility"
     )
 endif()
 
@@ -35,7 +41,7 @@ target_include_directories(cdcl INTERFACE
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include/ariadne-cdcl>
 )
-target_link_libraries(cdcl INTERFACE threading)
+target_link_libraries(cdcl INTERFACE utility threading)
 
 add_subdirectory(src)
 target_link_libraries(CDCL_SRC PRIVATE cdcl)
