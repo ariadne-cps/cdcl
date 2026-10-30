@@ -1,5 +1,5 @@
-if(NOT TARGET utility)
-    ariadne_add_submodule(utility)
+if(NOT TARGET threading)
+    ariadne_add_submodule(threading)
 endif()
 
 if(BUILD_PYTHON_BINDINGS AND NOT TARGET pyariadne-python-common)
