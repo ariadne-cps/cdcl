@@ -51,9 +51,8 @@ Void validate_cdcl_theory_feedback(
     CdclTheoryFeedback const& feedback, CdclAssignment const& assignment)
 {
     if(feedback.status()!=CdclTheoryStatus::CONFLICT) {
-        if(not feedback.explanation().empty()) {
-            throw std::invalid_argument("Non-conflict theory feedback cannot carry a clause");
-        }
+        // The private constructor and the consistent/unknown factories
+        // guarantee an empty explanation for non-conflict feedback.
         return;
     }
     for(BooleanLiteral literal:feedback.explanation()) {

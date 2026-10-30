@@ -27,6 +27,7 @@
  */
 
 #include <stdexcept>
+#include <memory>
 #include "cdcl/cdcl_theory.hpp"
 
 using namespace Ariadne;
@@ -46,6 +47,13 @@ class MockTheory : public CdclTheory {
         }
         return CdclTheoryFeedback::consistent();
     }
+};
+class OwnedTheory : public MockTheory {
+  public:
+    explicit OwnedTheory(Bool& destroyed) : _destroyed(destroyed) { }
+    ~OwnedTheory() override { _destroyed=true; }
+  private:
+    Bool& _destroyed;
 };
 }
 int main() {
@@ -82,5 +90,19 @@ int main() {
 
     // Empty clause is permitted as an explicit global contradiction.
     validate_cdcl_theory_feedback(CdclTheoryFeedback::conflict({}),partial);
+
+    threw=false;
+    try {
+        validate_cdcl_theory_feedback(
+            CdclTheoryFeedback::conflict({BooleanLiteral(partial.size())}),partial);
+    } catch(std::out_of_range const&) { threw=true; }
+    if(not threw) { throw std::runtime_error("Out-of-range theory variable must be rejected"); }
+
+    // Theory adapters can be owned and destroyed through the interface.
+    Bool destroyed=false;
+    std::unique_ptr<CdclTheory> owned=std::make_unique<OwnedTheory>(destroyed);
+    require(owned->check_partial(partial).status()==CdclTheoryStatus::CONFLICT);
+    owned.reset();
+    if(not destroyed) { throw std::runtime_error("Theory interface must destroy its derived adapter"); }
     return 0;
 }
