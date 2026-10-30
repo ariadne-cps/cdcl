@@ -53,6 +53,18 @@ class UnknownTheory : public CdclTheory {
         return CdclTheoryFeedback::unknown();
     }
 };
+// The theory requires x0 OR x2, independently of x1. A conflict at
+// level three must jump past x1 and assert x2 at level one.
+class DisjunctionTheory : public CdclTheory {
+  public:
+    CdclTheoryFeedback check_partial(CdclAssignment const& assignment) override {
+        if(assignment[0]==std::optional<Bool>(false)
+                and assignment[2]==std::optional<Bool>(false)) {
+            return CdclTheoryFeedback::conflict({BooleanLiteral(0u),BooleanLiteral(2u)});
+        }
+        return CdclTheoryFeedback::consistent();
+    }
+};
 }
 int main() {
     {
@@ -63,6 +75,11 @@ int main() {
         auto model=solver.assignment();
         require(model[0].value() and model[1].value());
         require(solver.statistics().boolean_propagations==2u);
+        Bool rejected_repeat=false;
+        try { (void)solver.solve(); }
+        catch(std::logic_error const&) { rejected_repeat=true; }
+        if(not rejected_repeat) { throw std::runtime_error("A second solve must be rejected"); }
+        require(solver.assignment()==model);
     }
     {
         std::vector<Clause> clauses{
@@ -187,6 +204,25 @@ int main() {
                 }
             }
         }
+    }
+    {
+        std::vector<Clause> clauses;
+        DisjunctionTheory theory;
+        CdclSolver solver(3u,clauses);
+        require(solver.assignment()==CdclAssignment(3u));
+        require(solver.solve(&theory)==CdclSolveStatus::SAT);
+        auto model=solver.assignment();
+        if(model!=CdclAssignment({false,false,true})) {
+            throw std::runtime_error("Theory backjump must retain x0 and assert x2");
+        }
+        auto const& stats=solver.statistics();
+        require(stats.boolean_conflicts_analyzed==1u);
+        require(stats.nonchronological_backjumps==1u);
+        require(stats.last_backjump_level==1u);
+        require(stats.last_learned_current_level_literals==1u);
+        require(stats.last_learned_clause_literals==2u);
+        require(stats.theory_learned_clauses==1u);
+        require(stats.theory_learned_clause_propagations==1u);
     }
     {
         std::vector<Clause> clauses{{BooleanLiteral(1)}};

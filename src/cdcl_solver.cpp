@@ -38,15 +38,7 @@ CdclSolver::CdclSolver(
     std::vector<BooleanClause> const& original_clauses,
     SizeType learned_clause_limit)
     : CdclState(variable_count,original_clauses,learned_clause_limit)
-{
-    for(BooleanClause const& clause:original_clauses) {
-        for(BooleanLiteral literal:clause) {
-            if(literal.variable()>=variable_count) {
-                throw std::out_of_range("CDCL clause uses an undeclared Boolean variable");
-            }
-        }
-    }
-}
+{ } // CdclState validates every original literal before construction returns.
 
 CdclAssignment CdclSolver::assignment() const
 {
