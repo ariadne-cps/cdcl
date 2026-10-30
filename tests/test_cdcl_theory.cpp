@@ -29,13 +29,11 @@
 #include <stdexcept>
 #include <memory>
 #include "cdcl/cdcl_theory.hpp"
+#include "macro/testing.hpp"
 
 using namespace Ariadne;
 
 namespace {
-Void require(Bool ok) {
-    if(not ok) { throw std::runtime_error("CDCL theory test failed"); }
-}
 class MockTheory : public CdclTheory {
   public:
     CdclTheoryFeedback check_partial(CdclAssignment const& assignment) override {
@@ -55,54 +53,57 @@ class OwnedTheory : public MockTheory {
   private:
     Bool& _destroyed;
 };
-}
-int main() {
+
+Void test_feedback_statuses() {
     MockTheory theory;
     CdclAssignment partial(2u);
     auto u=theory.check_partial(partial);
-    require(u.status()==CdclTheoryStatus::UNKNOWN);
-    validate_cdcl_theory_feedback(u,partial);
+    ARIADNE_TEST_ASSERT(u.status()==CdclTheoryStatus::UNKNOWN);
+    ARIADNE_TEST_TRY(validate_cdcl_theory_feedback(u,partial));
 
     partial[0]=false;
     auto c=theory.check_partial(partial);
-    require(c.status()==CdclTheoryStatus::CONSISTENT);
-    validate_cdcl_theory_feedback(c,partial);
+    ARIADNE_TEST_ASSERT(c.status()==CdclTheoryStatus::CONSISTENT);
+    ARIADNE_TEST_TRY(validate_cdcl_theory_feedback(c,partial));
 
     partial[0]=true;
     auto f=theory.check_partial(partial);
-    require(f.status()==CdclTheoryStatus::CONFLICT);
-    require(f.explanation().size()==1u);
-    validate_cdcl_theory_feedback(f,partial);
+    ARIADNE_TEST_ASSERT(f.status()==CdclTheoryStatus::CONFLICT);
+    ARIADNE_TEST_EQUALS(f.explanation().size(),1u);
+    ARIADNE_TEST_TRY(validate_cdcl_theory_feedback(f,partial));
+}
 
-    Bool threw=false;
-    try {
-        validate_cdcl_theory_feedback(
-            CdclTheoryFeedback::conflict({BooleanLiteral(0)}),partial);
-    } catch(std::invalid_argument const&) { threw=true; }
-    require(threw);
+Void test_feedback_validation() {
+    CdclAssignment partial{true,std::nullopt};
+    ARIADNE_PRINT_TEST_CASE_TITLE("A satisfied conflict literal is invalid");
+    ARIADNE_TEST_THROWS(validate_cdcl_theory_feedback(
+        CdclTheoryFeedback::conflict({BooleanLiteral(0)}),partial),std::invalid_argument);
 
-    threw=false;
-    try {
-        validate_cdcl_theory_feedback(
-            CdclTheoryFeedback::conflict({BooleanLiteral(1)}),partial);
-    } catch(std::invalid_argument const&) { threw=true; }
-    require(threw);
+    ARIADNE_PRINT_TEST_CASE_TITLE("An unassigned conflict literal is invalid");
+    ARIADNE_TEST_THROWS(validate_cdcl_theory_feedback(
+        CdclTheoryFeedback::conflict({BooleanLiteral(1)}),partial),std::invalid_argument);
 
-    // Empty clause is permitted as an explicit global contradiction.
-    validate_cdcl_theory_feedback(CdclTheoryFeedback::conflict({}),partial);
+    ARIADNE_PRINT_TEST_CASE_TITLE("An empty clause represents a global contradiction");
+    ARIADNE_TEST_TRY(validate_cdcl_theory_feedback(CdclTheoryFeedback::conflict({}),partial));
 
-    threw=false;
-    try {
-        validate_cdcl_theory_feedback(
-            CdclTheoryFeedback::conflict({BooleanLiteral(partial.size())}),partial);
-    } catch(std::out_of_range const&) { threw=true; }
-    if(not threw) { throw std::runtime_error("Out-of-range theory variable must be rejected"); }
+    ARIADNE_PRINT_TEST_CASE_TITLE("An undeclared conflict variable is invalid");
+    ARIADNE_TEST_THROWS(validate_cdcl_theory_feedback(
+        CdclTheoryFeedback::conflict({BooleanLiteral(partial.size())}),partial),std::out_of_range);
+}
 
-    // Theory adapters can be owned and destroyed through the interface.
+Void test_theory_ownership() {
+    CdclAssignment partial{true,std::nullopt};
     Bool destroyed=false;
     std::unique_ptr<CdclTheory> owned=std::make_unique<OwnedTheory>(destroyed);
-    require(owned->check_partial(partial).status()==CdclTheoryStatus::CONFLICT);
+    ARIADNE_TEST_ASSERT(owned->check_partial(partial).status()==CdclTheoryStatus::CONFLICT);
     owned.reset();
-    if(not destroyed) { throw std::runtime_error("Theory interface must destroy its derived adapter"); }
-    return 0;
+    ARIADNE_TEST_ASSERT(destroyed);
+}
+}
+
+int main() {
+    ARIADNE_TEST_CALL(test_feedback_statuses());
+    ARIADNE_TEST_CALL(test_feedback_validation());
+    ARIADNE_TEST_CALL(test_theory_ownership());
+    return ARIADNE_TEST_FAILURES;
 }
