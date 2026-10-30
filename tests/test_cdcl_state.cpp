@@ -59,6 +59,12 @@ class CoreProbe : public CdclState {
     using CdclState::_watch_lists;
     using CdclState::_watched_positions;
     using CdclState::_propagation_head;
+    using CdclState::_original_clause_count;
+    using CdclState::_clause_count;
+    using CdclState::_clause;
+    using CdclState::_is_theory_learned_clause;
+    using CdclState::_active_non_theory_learned_clause_count;
+    using CdclState::_learned_clause_locked;
 };
 }
 
@@ -199,5 +205,53 @@ int main() {
     CoreProbe contradictory(0u,empty);
     require(not contradictory._unit_propagate());
     require(contradictory._last_boolean_conflict_clause==std::optional<SizeType>(0u));
+
+    // Learned-clause queries distinguish original, theory and Boolean
+    // clauses. Locks follow live propagation reasons, never decisions or
+    // assignments removed by backtracking.
+    std::vector<Clause> original{{BooleanLiteral(0u),BooleanLiteral(1u)}};
+    CoreProbe locks(3u,original);
+    require(not locks._is_theory_learned_clause(0u));
+    require(locks._active_non_theory_learned_clause_count()==0u);
+    locks._maybe_prune_learned_clauses(0u);
+    require(locks._cdcl_statistics.learned_clause_pruning_runs==0u);
+    SizeType const theory_unit=locks._add_learned_clause({BooleanLiteral(0u)},true);
+    Clause const binary{BooleanLiteral(1u),BooleanLiteral(2u)};
+    SizeType const boolean_binary=locks._add_learned_clause(binary);
+    require(locks._is_theory_learned_clause(theory_unit));
+    require(not locks._is_theory_learned_clause(boolean_binary));
+    require(locks._active_non_theory_learned_clause_count()==1u);
+    require(not locks._learned_clause_locked(theory_unit));
+    require(not locks._learned_clause_locked(boolean_binary));
+    require(locks._unit_propagate());
+    if(not locks._learned_clause_locked(theory_unit)) {
+        throw std::runtime_error("A live theory reason must lock its clause");
+    }
+    require(not locks._learned_clause_locked(boolean_binary));
+    locks._push_decision_level();
+    locks._assign_literal(BooleanLiteral(1u,false));
+    require(not locks._learned_clause_locked(boolean_binary));
+    require(locks._unit_propagate());
+    require(locks._assignment[2u].value==1);
+    require(locks._assignment[2u].reason_clause==boolean_binary);
+    if(not locks._learned_clause_locked(boolean_binary)) {
+        throw std::runtime_error("Boolean propagation must lock its reason clause");
+    }
+    locks._maybe_prune_learned_clauses(boolean_binary);
+    require(locks._cdcl_statistics.learned_clause_pruning_runs==1u);
+    require(locks._cdcl_statistics.learned_clauses_pruned==0u);
+    require(locks._clause_count()==3u and locks._original_clause_count()==1u);
+    require(locks._clause(boolean_binary)==binary);
+    locks._backtrack_to_level(0u);
+    if(locks._learned_clause_locked(boolean_binary)) {
+        throw std::runtime_error("Backtracking must release the Boolean reason lock");
+    }
+    require(locks._learned_clause_locked(theory_unit));
+    locks._push_decision_level();
+    locks._assign_literal(BooleanLiteral(2u,false));
+    require(locks._unit_propagate());
+    if(locks._assignment[1u].value!=1 or locks._assignment[1u].reason_clause!=boolean_binary) {
+        throw std::runtime_error("Reduction must preserve clauses needed after backtracking");
+    }
     return 0;
 }
