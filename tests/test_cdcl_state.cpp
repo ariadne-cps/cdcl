@@ -253,5 +253,26 @@ int main() {
     if(locks._assignment[1u].value!=1 or locks._assignment[1u].reason_clause!=boolean_binary) {
         throw std::runtime_error("Reduction must preserve clauses needed after backtracking");
     }
+
+    // Reduction is deliberately deferred even for old, unprotected, long
+    // clauses. These learned copies are entailed by the original formula.
+    std::vector<Clause> long_original{{BooleanLiteral(0u),BooleanLiteral(1u),BooleanLiteral(2u)}};
+    CoreProbe retained(3u,long_original);
+    for(SizeType i=0u;i<4u;++i) {
+        retained._add_learned_clause(long_original[0u]);
+    }
+    retained._maybe_prune_learned_clauses(4u);
+    if(retained._clause_count()!=5u or retained._cdcl_statistics.learned_clauses_pruned!=0u) {
+        throw std::runtime_error("Deferred reduction must retain even old candidate clauses");
+    }
+    require(retained._cdcl_statistics.learned_clause_pruning_runs==1u);
+    for(SizeType i=1u;i<5u;++i) { require(retained._clause(i)==long_original[0u]); }
+    require(retained._unit_propagate());
+    retained._push_decision_level();
+    retained._assign_literal(BooleanLiteral(0u,false));
+    require(retained._unit_propagate());
+    retained._assign_literal(BooleanLiteral(1u,false));
+    require(retained._unit_propagate());
+    require(retained._assignment[2u].value==1);
     return 0;
 }

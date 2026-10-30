@@ -151,7 +151,7 @@ Void CdclState::_bump_learned_clause_activity(SizeType index)
     ++_cdcl_statistics.learned_clause_activity_bumps;
 }
 
-Void CdclState::_maybe_prune_learned_clauses(SizeType protected_clause)
+Void CdclState::_maybe_prune_learned_clauses(SizeType /* protected_clause */)
 {
     SizeType active=this->_active_non_theory_learned_clause_count();
     if(active<=_learned_clause_limit) {
@@ -159,37 +159,9 @@ Void CdclState::_maybe_prune_learned_clauses(SizeType protected_clause)
     }
 
     ++_cdcl_statistics.learned_clause_pruning_runs;
-    // Maintain candidate selection but do not deactivate learned clauses:
-    // removal must wait for a progress-preserving reduction algorithm.
-    struct Candidate {
-        SizeType index;
-        SizeType activity;
-        SizeType size;
-    };
-    std::vector<Candidate> candidates;
-    for(SizeType i=0u; i<_learned_clauses.size(); ++i) {
-        SizeType clause_index=this->_original_clause_count()+i;
-        Bool const recent=_cdcl_statistics.learned_clauses<=
-            _learned_clause_generation[i]+2u;
-        Bool const excluded=_learned_clause_is_theory[i] or recent
-            or _learned_clauses[i].size()<=2u
-            or _learned_clause_activity[i]>1u
-            or clause_index==protected_clause
-            or this->_learned_clause_locked(clause_index);
-        if(not excluded) {
-            candidates.push_back({
-                clause_index,_learned_clause_activity[i],_learned_clauses[i].size()
-            });
-        }
-    }
-    std::stable_sort(candidates.begin(),candidates.end(),
-        [](Candidate const& lhs,Candidate const& rhs) {
-            if(lhs.activity!=rhs.activity) {
-                return lhs.activity<rhs.activity;
-            }
-            return lhs.size>rhs.size;
-        });
-    (void)candidates;
+    // Reduction is deferred until a progress-preserving algorithm exists.
+    // Selecting and sorting candidates had no effect: the local vector was
+    // discarded. Retain every clause, its watches and its propagation reasons.
 }
 
 SizeType CdclState::_literal_watch_index(BooleanLiteral literal) const

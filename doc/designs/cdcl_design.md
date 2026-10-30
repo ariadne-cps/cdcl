@@ -127,3 +127,21 @@ index inside the same `main()` scope. Clang (with warnings as errors)
 reported a redefinition before tests could execute. Renamed only the
 new scenario's local index to `delayed_learned` and updated its assertions;
 the test scenario and production propagation algorithm are unchanged.
+
+### 2026-10-30 - Remove work with no effect from deferred clause reduction
+
+Clause reduction remains deferred: exceeding the configured limit records
+a reduction attempt but retains all learned clauses. The previous code
+selected and sorted a local candidate vector and then discarded it without
+changing any state or returning the candidates. That computation has been
+removed; activity/generation tracking, protected queries, statistics, watches
+and reason locks are preserved. A regression checks retention of old long
+clauses as well as their continued propagation. No deletion policy has been
+introduced as part of coverage work.
+
+Two unreachable checks were also removed after establishing their invariants:
+the state constructor already validates original literals before the solver
+constructor body runs; and pending-clause conflict detection returns before
+watch installation if every literal is false. Non-conflict theory feedback
+has an empty explanation by construction through its private constructor and
+public factories. Range errors and single-shot solve errors remain checked.
