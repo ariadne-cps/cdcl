@@ -128,7 +128,10 @@ class TestCdclSolver : public Ariadne::Testing::ContextFixture {
                     : CdclCompletionStatus::REJECTED;
             });
         ARIADNE_TESTING_PROVE(status==CdclSolveStatus::SAT);
-        ARIADNE_TESTING_PROVE(solver.assignment()[0].value());
+        // assignment() returns by value. Keep the model alive while the
+        // testing check captures the value() result by reference.
+        CdclAssignment const model=solver.assignment();
+        ARIADNE_TESTING_PROVE(model[0].value());
     }
     {
         ARIADNE_TESTING_NOTE("Exhaustive completion rejection visits every leaf");
