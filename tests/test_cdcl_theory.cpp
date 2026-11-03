@@ -29,7 +29,7 @@
 #include <stdexcept>
 #include <memory>
 #include "cdcl/cdcl_theory.hpp"
-#include "macro/testing.hpp"
+#include "ariadne-testing.hpp"
 
 using namespace Ariadne;
 
@@ -54,56 +54,62 @@ class OwnedTheory : public MockTheory {
     Bool& _destroyed;
 };
 
-Void test_feedback_statuses() {
+class TestCdclTheory : public Ariadne::Testing::ContextFixture {
+  public:
+    using ContextFixture::ContextFixture;
+
+    Void test_feedback_statuses() {
     MockTheory theory;
     CdclAssignment partial(2u);
     auto u=theory.check_partial(partial);
-    ARIADNE_TEST_ASSERT(u.status()==CdclTheoryStatus::UNKNOWN);
-    ARIADNE_TEST_TRY(validate_cdcl_theory_feedback(u,partial));
+    ARIADNE_TESTING_PROVE(u.status()==CdclTheoryStatus::UNKNOWN);
+    ARIADNE_TESTING_EXPECT_NO_THROW(validate_cdcl_theory_feedback(u,partial));
 
     partial[0]=false;
     auto c=theory.check_partial(partial);
-    ARIADNE_TEST_ASSERT(c.status()==CdclTheoryStatus::CONSISTENT);
-    ARIADNE_TEST_TRY(validate_cdcl_theory_feedback(c,partial));
+    ARIADNE_TESTING_PROVE(c.status()==CdclTheoryStatus::CONSISTENT);
+    ARIADNE_TESTING_EXPECT_NO_THROW(validate_cdcl_theory_feedback(c,partial));
 
     partial[0]=true;
     auto f=theory.check_partial(partial);
-    ARIADNE_TEST_ASSERT(f.status()==CdclTheoryStatus::CONFLICT);
-    ARIADNE_TEST_EQUALS(f.explanation().size(),1u);
-    ARIADNE_TEST_TRY(validate_cdcl_theory_feedback(f,partial));
+    ARIADNE_TESTING_PROVE(f.status()==CdclTheoryStatus::CONFLICT);
+    ARIADNE_TESTING_EXPECT_EQUAL(f.explanation().size(),1u);
+    ARIADNE_TESTING_EXPECT_NO_THROW(validate_cdcl_theory_feedback(f,partial));
 }
 
 Void test_feedback_validation() {
     CdclAssignment partial{true,std::nullopt};
-    ARIADNE_PRINT_TEST_CASE_TITLE("A satisfied conflict literal is invalid");
-    ARIADNE_TEST_THROWS(validate_cdcl_theory_feedback(
-        CdclTheoryFeedback::conflict({BooleanLiteral(0)}),partial),std::invalid_argument);
+    ARIADNE_TESTING_NOTE("A satisfied conflict literal is invalid");
+    ARIADNE_TESTING_EXPECT_THROWS(std::invalid_argument, validate_cdcl_theory_feedback(
+        CdclTheoryFeedback::conflict({BooleanLiteral(0)}),partial));
 
-    ARIADNE_PRINT_TEST_CASE_TITLE("An unassigned conflict literal is invalid");
-    ARIADNE_TEST_THROWS(validate_cdcl_theory_feedback(
-        CdclTheoryFeedback::conflict({BooleanLiteral(1)}),partial),std::invalid_argument);
+    ARIADNE_TESTING_NOTE("An unassigned conflict literal is invalid");
+    ARIADNE_TESTING_EXPECT_THROWS(std::invalid_argument, validate_cdcl_theory_feedback(
+        CdclTheoryFeedback::conflict({BooleanLiteral(1)}),partial));
 
-    ARIADNE_PRINT_TEST_CASE_TITLE("An empty clause represents a global contradiction");
-    ARIADNE_TEST_TRY(validate_cdcl_theory_feedback(CdclTheoryFeedback::conflict({}),partial));
+    ARIADNE_TESTING_NOTE("An empty clause represents a global contradiction");
+    ARIADNE_TESTING_EXPECT_NO_THROW(validate_cdcl_theory_feedback(CdclTheoryFeedback::conflict({}),partial));
 
-    ARIADNE_PRINT_TEST_CASE_TITLE("An undeclared conflict variable is invalid");
-    ARIADNE_TEST_THROWS(validate_cdcl_theory_feedback(
-        CdclTheoryFeedback::conflict({BooleanLiteral(partial.size())}),partial),std::out_of_range);
+    ARIADNE_TESTING_NOTE("An undeclared conflict variable is invalid");
+    ARIADNE_TESTING_EXPECT_THROWS(std::out_of_range, validate_cdcl_theory_feedback(
+        CdclTheoryFeedback::conflict({BooleanLiteral(partial.size())}),partial));
 }
 
 Void test_theory_ownership() {
     CdclAssignment partial{true,std::nullopt};
     Bool destroyed=false;
     std::unique_ptr<CdclTheory> owned=std::make_unique<OwnedTheory>(destroyed);
-    ARIADNE_TEST_ASSERT(owned->check_partial(partial).status()==CdclTheoryStatus::CONFLICT);
+    ARIADNE_TESTING_PROVE(owned->check_partial(partial).status()==CdclTheoryStatus::CONFLICT);
     owned.reset();
-    ARIADNE_TEST_ASSERT(destroyed);
+    ARIADNE_TESTING_PROVE(destroyed);
 }
+};
 }
 
-int main() {
-    ARIADNE_TEST_CALL(test_feedback_statuses());
-    ARIADNE_TEST_CALL(test_feedback_validation());
-    ARIADNE_TEST_CALL(test_theory_ownership());
-    return ARIADNE_TEST_FAILURES;
+int main(int argc, char** argv) {
+    ARIADNE_TESTING_SUITE("test_cdcl_theory");
+    ARIADNE_TESTING_ADD_TEST(TestCdclTheory, test_feedback_statuses);
+    ARIADNE_TESTING_ADD_TEST(TestCdclTheory, test_feedback_validation);
+    ARIADNE_TESTING_ADD_TEST(TestCdclTheory, test_theory_ownership);
+    return ARIADNE_TESTING_RUN_TESTS_WITH_ARGS(argc, argv);
 }

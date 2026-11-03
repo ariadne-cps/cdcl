@@ -145,3 +145,25 @@ constructor body runs; and pending-clause conflict detection returns before
 watch installation if every literal is false. Non-conflict theory feedback
 has an empty explanation by construction through its private constructor and
 public factories. Range errors and single-shot solve errors remain checked.
+
+### 2026-11-03 - Migrate regression tests to Ariadne Testing
+
+The four C++ regression executables now register eight independently reported
+test methods through `ContextFixture` and `ARIADNE_TESTING_ADD_TEST`, with
+no parameter variants. The two large CDCL solver/state methods retain their
+original scenario ordering and shared in-method state. The Boolean literal
+and theory tests retain three separate methods each.
+
+All legacy test assertions and typed exception expectations use the shared
+testing reporter; successful validation attempts now use explicit
+`ARIADNE_TESTING_EXPECT_NO_THROW` checks. Scenario titles and comments are
+attached as `ARIADNE_TESTING_NOTE` diagnostics instead of direct stdout.
+The solver completion callbacks capture the fixture's `this` explicitly
+so checks still contribute to the active case context. Neither the
+production solver nor the truth-table differential oracle (256 generated
+instances) was changed.
+
+CTest runs with `--concise`. The direct testing dependency and the
+utility, threading and configuration submodules are aligned to the shared
+dependency commits; the complete C++ test target and Python bindings retain
+their original build inclusion.

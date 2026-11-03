@@ -27,7 +27,7 @@
  */
 
 #include <stdexcept>
-#include "macro/testing.hpp"
+#include "ariadne-testing.hpp"
 #include <vector>
 #include <cstdint>
 #include "cdcl/cdcl_solver.hpp"
@@ -64,57 +64,61 @@ class DisjunctionTheory : public CdclTheory {
     }
 };
 }
-Void test_cdcl_solver() {
+class TestCdclSolver : public Ariadne::Testing::ContextFixture {
+  public:
+    using ContextFixture::ContextFixture;
+
+    Void test_cdcl_solver() {
     {
-        ARIADNE_PRINT_TEST_CASE_TITLE("Root propagation and single-shot solve");
+        ARIADNE_TESTING_NOTE("Root propagation and single-shot solve");
         std::vector<Clause> clauses{{BooleanLiteral(0)}, {
             BooleanLiteral(0,false),BooleanLiteral(1)}};
         CdclSolver solver(2u,clauses);
-        ARIADNE_TEST_ASSERT(solver.solve()==CdclSolveStatus::SAT);
+        ARIADNE_TESTING_PROVE(solver.solve()==CdclSolveStatus::SAT);
         auto model=solver.assignment();
-        ARIADNE_TEST_ASSERT(model[0].value() and model[1].value());
-        ARIADNE_TEST_ASSERT(solver.statistics().boolean_propagations==2u);
-        ARIADNE_TEST_THROWS(solver.solve(),std::logic_error);
-        ARIADNE_TEST_ASSERT(solver.assignment()==model);
+        ARIADNE_TESTING_PROVE(model[0].value() and model[1].value());
+        ARIADNE_TESTING_PROVE(solver.statistics().boolean_propagations==2u);
+        ARIADNE_TESTING_EXPECT_THROWS(std::logic_error, solver.solve());
+        ARIADNE_TESTING_PROVE(solver.assignment()==model);
     }
     {
-        ARIADNE_PRINT_TEST_CASE_TITLE("Contradictory root units");
+        ARIADNE_TESTING_NOTE("Contradictory root units");
         std::vector<Clause> clauses{
             {BooleanLiteral(0)}, {BooleanLiteral(0,false)}};
         CdclSolver solver(1u,clauses);
-        ARIADNE_TEST_ASSERT(solver.solve()==CdclSolveStatus::UNSAT);
+        ARIADNE_TESTING_PROVE(solver.solve()==CdclSolveStatus::UNSAT);
     }
     {
-        ARIADNE_PRINT_TEST_CASE_TITLE("Empty clause is UNSAT");
+        ARIADNE_TESTING_NOTE("Empty clause is UNSAT");
         std::vector<Clause> clauses{{}};
         CdclSolver solver(0u,clauses);
-        ARIADNE_TEST_ASSERT(solver.solve()==CdclSolveStatus::UNSAT);
+        ARIADNE_TESTING_PROVE(solver.solve()==CdclSolveStatus::UNSAT);
     }
     {
-        ARIADNE_PRINT_TEST_CASE_TITLE("Empty zero-variable formula is SAT");
+        ARIADNE_TESTING_NOTE("Empty zero-variable formula is SAT");
         std::vector<Clause> clauses;
         CdclSolver solver(0u,clauses);
-        ARIADNE_TEST_ASSERT(solver.solve()==CdclSolveStatus::SAT);
+        ARIADNE_TESTING_PROVE(solver.solve()==CdclSolveStatus::SAT);
     }
     {
-        ARIADNE_PRINT_TEST_CASE_TITLE("Theory rejects a root assignment");
+        ARIADNE_TESTING_NOTE("Theory rejects a root assignment");
         std::vector<Clause> clauses{{BooleanLiteral(0)}};
         ExclusionTheory theory;
         CdclSolver solver(2u,clauses);
-        ARIADNE_TEST_ASSERT(solver.solve(&theory)==CdclSolveStatus::UNSAT);
-        ARIADNE_TEST_ASSERT(solver.statistics().theory_learned_clauses>=1u);
+        ARIADNE_TESTING_PROVE(solver.solve(&theory)==CdclSolveStatus::UNSAT);
+        ARIADNE_TESTING_PROVE(solver.statistics().theory_learned_clauses>=1u);
     }
     {
-        ARIADNE_PRINT_TEST_CASE_TITLE("Inconclusive theory and completion");
+        ARIADNE_TESTING_NOTE("Inconclusive theory and completion");
         std::vector<Clause> clauses;
         UnknownTheory theory;
         CdclSolver solver(1u,clauses);
         auto status=solver.solve(&theory,
             [](CdclAssignment const&) { return CdclCompletionStatus::UNKNOWN; });
-        ARIADNE_TEST_ASSERT(status==CdclSolveStatus::UNKNOWN);
+        ARIADNE_TESTING_PROVE(status==CdclSolveStatus::UNKNOWN);
     }
     {
-        ARIADNE_PRINT_TEST_CASE_TITLE("Completion certifies the second branch");
+        ARIADNE_TESTING_NOTE("Completion certifies the second branch");
         std::vector<Clause> clauses;
         CdclSolver solver(1u,clauses);
         auto status=solver.solve(nullptr,
@@ -123,51 +127,51 @@ Void test_cdcl_solver() {
                     ? CdclCompletionStatus::CERTIFIED
                     : CdclCompletionStatus::REJECTED;
             });
-        ARIADNE_TEST_ASSERT(status==CdclSolveStatus::SAT);
-        ARIADNE_TEST_ASSERT(solver.assignment()[0].value());
+        ARIADNE_TESTING_PROVE(status==CdclSolveStatus::SAT);
+        ARIADNE_TESTING_PROVE(solver.assignment()[0].value());
     }
     {
-        ARIADNE_PRINT_TEST_CASE_TITLE("Exhaustive completion rejection visits every leaf");
+        ARIADNE_TESTING_NOTE("Exhaustive completion rejection visits every leaf");
         // All four leaves must be visited. A broken nested backtrack can
         // erase the parent decision and recurse indefinitely here.
         std::vector<Clause> clauses;
         CdclSolver solver(2u,clauses);
         SizeType completed_models=0u;
         auto status=solver.solve(nullptr,
-            [&completed_models](CdclAssignment const& assignment) {
-                ARIADNE_TEST_ASSERT(assignment[0].has_value());
-                ARIADNE_TEST_ASSERT(assignment[1].has_value());
+            [this, &completed_models](CdclAssignment const& assignment) {
+                ARIADNE_TESTING_PROVE(assignment[0].has_value());
+                ARIADNE_TESTING_PROVE(assignment[1].has_value());
                 ++completed_models;
                 return CdclCompletionStatus::REJECTED;
             });
-        ARIADNE_TEST_ASSERT(status==CdclSolveStatus::UNSAT);
-        ARIADNE_TEST_ASSERT(completed_models==4u);
+        ARIADNE_TESTING_PROVE(status==CdclSolveStatus::UNSAT);
+        ARIADNE_TESTING_PROVE(completed_models==4u);
     }
     {
-        ARIADNE_PRINT_TEST_CASE_TITLE("Root propagation survives exhaustive completion rejection");
+        ARIADNE_TESTING_NOTE("Root propagation survives exhaustive completion rejection");
         // Root propagation is kept after exploring both branches of the
         // unrelated decision variable. Only two completions are possible.
         std::vector<Clause> clauses{{BooleanLiteral(0u)}};
         CdclSolver solver(2u,clauses);
         SizeType completed_models=0u;
         auto status=solver.solve(nullptr,
-            [&completed_models](CdclAssignment const& assignment) {
-                ARIADNE_TEST_ASSERT(assignment[0]==std::optional<Bool>(true));
-                ARIADNE_TEST_ASSERT(assignment[1].has_value());
+            [this, &completed_models](CdclAssignment const& assignment) {
+                ARIADNE_TESTING_PROVE(assignment[0]==std::optional<Bool>(true));
+                ARIADNE_TESTING_PROVE(assignment[1].has_value());
                 ++completed_models;
                 return CdclCompletionStatus::REJECTED;
             });
-        ARIADNE_TEST_ASSERT(status==CdclSolveStatus::UNSAT);
-        ARIADNE_TEST_ASSERT(completed_models==2u);
-        ARIADNE_TEST_ASSERT(solver.statistics().boolean_propagations==1u);
+        ARIADNE_TESTING_PROVE(status==CdclSolveStatus::UNSAT);
+        ARIADNE_TESTING_PROVE(completed_models==2u);
+        ARIADNE_TESTING_PROVE(solver.statistics().boolean_propagations==1u);
     }
     {
-        ARIADNE_PRINT_TEST_CASE_TITLE("Truth-table differential oracle");
+        ARIADNE_TESTING_NOTE("Truth-table differential oracle");
         // Differential oracle against complete truth-table enumeration:
         // every generated instance is checked for both status and witness.
         // Include empty, repeated, tautological, and ternary clauses.
         for(SizeType seed=0u;seed<256u;++seed) {
-            ARIADNE_PRINT_TEST_CASE_TITLE("Truth-table CNF seed " << seed);
+            ARIADNE_TESTING_NOTE("Truth-table CNF seed " << seed);
             std::vector<Clause> clauses;
             for(SizeType j=0u;j<7u;++j) {
                 SizeType code=(seed*29u+j*17u+seed*j*3u)%343u;
@@ -196,47 +200,50 @@ Void test_cdcl_solver() {
             }
             CdclSolver solver(3u,clauses);
             auto status=solver.solve();
-            ARIADNE_TEST_ASSERT((status==CdclSolveStatus::SAT)==expected_sat);
+            ARIADNE_TESTING_PROVE((status==CdclSolveStatus::SAT)==expected_sat);
             if(status==CdclSolveStatus::SAT) {
                 CdclAssignment assignment=solver.assignment();
                 for(Clause const& clause:clauses) {
                     Bool clause_true=false;
                     for(BooleanLiteral literal:clause) {
-                        ARIADNE_TEST_ASSERT(assignment[literal.variable()].has_value());
+                        ARIADNE_TESTING_PROVE(assignment[literal.variable()].has_value());
                         clause_true=clause_true or
                             (*assignment[literal.variable()]==literal.positive());
                     }
-                    ARIADNE_TEST_ASSERT(clause_true);
+                    ARIADNE_TESTING_PROVE(clause_true);
                 }
             }
         }
     }
     {
-        ARIADNE_PRINT_TEST_CASE_TITLE("Theory conflict backjumps past an unrelated decision");
+        ARIADNE_TESTING_NOTE("Theory conflict backjumps past an unrelated decision");
         std::vector<Clause> clauses;
         DisjunctionTheory theory;
         CdclSolver solver(3u,clauses);
-        ARIADNE_TEST_ASSERT(solver.assignment()==CdclAssignment(3u));
-        ARIADNE_TEST_ASSERT(solver.solve(&theory)==CdclSolveStatus::SAT);
+        ARIADNE_TESTING_PROVE(solver.assignment()==CdclAssignment(3u));
+        ARIADNE_TESTING_PROVE(solver.solve(&theory)==CdclSolveStatus::SAT);
         auto model=solver.assignment();
-        ARIADNE_TEST_ASSERT(model==CdclAssignment({false,false,true}));
+        ARIADNE_TESTING_PROVE(model==CdclAssignment({false,false,true}));
         auto const& stats=solver.statistics();
-        ARIADNE_TEST_ASSERT(stats.boolean_conflicts_analyzed==1u);
-        ARIADNE_TEST_ASSERT(stats.nonchronological_backjumps==1u);
-        ARIADNE_TEST_ASSERT(stats.last_backjump_level==1u);
-        ARIADNE_TEST_ASSERT(stats.last_learned_current_level_literals==1u);
-        ARIADNE_TEST_ASSERT(stats.last_learned_clause_literals==2u);
-        ARIADNE_TEST_ASSERT(stats.theory_learned_clauses==1u);
-        ARIADNE_TEST_ASSERT(stats.theory_learned_clause_propagations==1u);
+        ARIADNE_TESTING_PROVE(stats.boolean_conflicts_analyzed==1u);
+        ARIADNE_TESTING_PROVE(stats.nonchronological_backjumps==1u);
+        ARIADNE_TESTING_PROVE(stats.last_backjump_level==1u);
+        ARIADNE_TESTING_PROVE(stats.last_learned_current_level_literals==1u);
+        ARIADNE_TESTING_PROVE(stats.last_learned_clause_literals==2u);
+        ARIADNE_TESTING_PROVE(stats.theory_learned_clauses==1u);
+        ARIADNE_TESTING_PROVE(stats.theory_learned_clause_propagations==1u);
     }
     {
-        ARIADNE_PRINT_TEST_CASE_TITLE("Undeclared original variable is rejected");
+        ARIADNE_TESTING_NOTE("Undeclared original variable is rejected");
         std::vector<Clause> clauses{{BooleanLiteral(1)}};
-        ARIADNE_TEST_THROWS(CdclSolver(1u,clauses),std::out_of_range);
+        ARIADNE_TESTING_EXPECT_THROWS(std::out_of_range, CdclSolver(1u,clauses));
     }
 }
 
-int main() {
-    ARIADNE_TEST_CALL(test_cdcl_solver());
-    return ARIADNE_TEST_FAILURES;
+};
+
+int main(int argc, char** argv) {
+    ARIADNE_TESTING_SUITE("test_cdcl_solver");
+    ARIADNE_TESTING_ADD_TEST(TestCdclSolver, test_cdcl_solver);
+    return ARIADNE_TESTING_RUN_TESTS_WITH_ARGS(argc, argv);
 }

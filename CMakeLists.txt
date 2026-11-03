@@ -22,11 +22,23 @@ if(EXISTS "${PROJECT_SOURCE_DIR}/.git")
             "configuration"
             "utility|configuration"
             "threading|configuration"
+            "testing|configuration"
+            "utility|testing|configuration"
+            "threading|testing|configuration"
+            "threading|logging|testing|configuration"
     )
     require_same_dependency_commit(Utility
         CHAINS
             "utility"
             "threading|logging|utility"
+    )
+    require_same_dependency_commit(Testing
+        CHAINS
+            "testing"
+            "utility|testing"
+            "threading|testing"
+            "threading|logging|testing"
+            "threading|logging|utility|testing"
     )
 endif()
 
