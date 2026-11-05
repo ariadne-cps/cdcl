@@ -13,6 +13,7 @@ used by [Ariadne SAT](https://github.com/ariadne-cps/sat) and
 CNF propagation using two watched literals, conflict analysis with 1-UIP
 learning, nonchronological backjumping, and an optional theory-feedback contract.
 It has no dependency on BDD or numerical SMT libraries.
+Although independently maintained and usable, this repository is also part of the [Ariadne repository structure](https://github.com/ariadne-cps/ariadne/blob/main/doc/structure.md).
 
 ## Layout
 
@@ -46,7 +47,7 @@ and solver restarts are not yet implemented.
 CDCL depends directly on:
 
 - [ariadne-cps/utility](https://github.com/ariadne-cps/utility) (Git submodule).
-- [ariadne-cps/configuration](https://github.com/ariadne-cps/configuration) (shared build configuration).
+- [ariadne-cps/build](https://github.com/ariadne-cps/build) (shared build configuration).
 - [ariadne-cps/python-common](https://github.com/ariadne-cps/python-common) (optional Python binding infrastructure).
 
 Utility supplies the lower Ariadne dependencies transitively.
