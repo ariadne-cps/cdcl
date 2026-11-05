@@ -29,5 +29,6 @@ target_link_libraries(pyariadne-cdcl INTERFACE
 
 ariadne_add_python_module(
     NAME cdcl
+    MODULE_IMPORT_NAME pyariadne_cdcl
     MODULE_SOURCE cdcl_module.cpp
 )

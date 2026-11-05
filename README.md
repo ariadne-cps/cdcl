@@ -69,7 +69,7 @@ For a C++-only build, configure with `-DBUILD_PYTHON_BINDINGS=OFF`.
 When a compatible Python development environment is available, the
 standalone build exposes `BooleanLiteral`, theory-feedback statuses,
 `CdclTheoryFeedback` and feedback validation in the combined
-`pyariadne` extension. The autonomous `CdclSolver` search is currently
+`pyariadne_cdcl` extension. The autonomous `CdclSolver` search is currently
 a C++ API, not a standalone Python solver binding.
 
 ## Contribution guidelines
@@ -77,7 +77,3 @@ a C++ API, not a standalone Python solver binding.
 If you would like to contribute to Ariadne CDCL, please contact the developer:
 
 - Luca Geretti <luca.geretti@univr.it>
-
-## License
-
-Ariadne CDCL is released under the GNU General Public License v3.0.

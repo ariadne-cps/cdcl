@@ -1,5 +1,5 @@
 import pytest
-from pyariadne import (BooleanLiteral, CdclTheoryFeedback, CdclTheoryStatus,
+from pyariadne_cdcl import (BooleanLiteral, CdclTheoryFeedback, CdclTheoryStatus,
                       validate_cdcl_theory_feedback)
 
 def test_literals():

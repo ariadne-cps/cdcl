@@ -21,7 +21,7 @@ if(Python3_FOUND)
     add_subdirectory(bindings)
 
     if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
-        ariadne_finalize_python_module(NAME cdcl)
+        ariadne_finalize_python_module(NAME cdcl MODULE_IMPORT_NAME pyariadne_cdcl)
 
         # Install the combined module under the chosen prefix, including on macOS.
         if(WIN32)
