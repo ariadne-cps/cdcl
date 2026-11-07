@@ -7,9 +7,12 @@ option(BUILD_PYTHON_BINDINGS "Build Python bindings" ON)
 
 if(NOT TARGET ariadne-build)
     find_package(Git REQUIRED)
-    execute_process(COMMAND "${GIT_EXECUTABLE}" -C "${CMAKE_CURRENT_SOURCE_DIR}"
-                    submodule update --init -- ss/bui
-                    RESULT_VARIABLE _result)
+    # Keep the initial Build checkout output in English.
+    execute_process(
+        COMMAND "${CMAKE_COMMAND}" -E env "LC_ALL=C"
+                "${GIT_EXECUTABLE}" -C "${CMAKE_CURRENT_SOURCE_DIR}"
+                submodule update --init -- ss/bui
+        RESULT_VARIABLE _result)
     if(_result)
         message(FATAL_ERROR "Cannot initialize build submodule")
     endif()
@@ -17,29 +20,13 @@ if(NOT TARGET ariadne-build)
 endif()
 
 if(EXISTS "${PROJECT_SOURCE_DIR}/.git")
-    require_same_dependency_commit(Build
-        CHAINS
-            "build"
-            "utility|build"
-            "threading|build"
-            "testing|build"
-            "utility|testing|build"
-            "threading|testing|build"
-            "threading|logging|testing|build"
-    )
-    require_same_dependency_commit(Utility
-        CHAINS
-            "utility"
-            "threading|logging|utility"
-    )
-    require_same_dependency_commit(Testing
-        CHAINS
-            "testing"
-            "utility|testing"
-            "threading|testing"
-            "threading|logging|testing"
-            "threading|logging|utility|testing"
-    )
+    # Pinned child commits guarantee their internal consistency.
+    require_same_dependency_commit(Build CHAINS
+        "build" "utility|build" "threading|build" "testing|build")
+    require_same_dependency_commit(Utility CHAINS
+        "utility" "threading|logging|utility")
+    require_same_dependency_commit(Testing CHAINS
+        "testing" "utility|testing" "threading|testing")
 endif()
 
 setup_project()
