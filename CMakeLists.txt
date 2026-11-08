@@ -25,8 +25,6 @@ if(EXISTS "${PROJECT_SOURCE_DIR}/.git")
         "build" "utility|build" "threading|build" "testing|build")
     require_same_dependency_commit(Utility CHAINS
         "utility" "threading|logging|utility")
-    require_same_dependency_commit(Testing CHAINS
-        "testing" "utility|testing" "threading|testing")
 endif()
 
 setup_project()
