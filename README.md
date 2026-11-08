@@ -48,6 +48,8 @@ CDCL depends directly on:
 
 - [ariadne-cps/utility](https://github.com/ariadne-cps/utility) (Git submodule).
 - [ariadne-cps/build](https://github.com/ariadne-cps/build) (shared build configuration).
+- [ariadne-cps/threading](https://github.com/ariadne-cps/threading) (threading and logging support).
+- [ariadne-cps/benchmarking](https://github.com/ariadne-cps/benchmarking) (standalone benchmarks only; never linked into the production library).
 - [ariadne-cps/python-common](https://github.com/ariadne-cps/python-common) (optional Python binding infrastructure).
 
 Utility supplies the lower Ariadne dependencies transitively.
@@ -58,11 +60,21 @@ Utility supplies the lower Ariadne dependencies transitively.
 git clone --recurse-submodules https://github.com/ariadne-cps/cdcl.git
 cd cdcl
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build --parallel --target everything
+cmake --build build --parallel --target ariadne-cdcl pyariadne
+cmake --build build --parallel --target benchmarks
 ctest --test-dir build --output-on-failure
 ```
 
-For a C++-only build, configure with `-DBUILD_PYTHON_BINDINGS=OFF`.
+For a C++-only build, configure with `-DBUILD_PYTHON_BINDINGS=OFF` and
+build `ariadne-cdcl` without the `pyariadne` target.
+
+The Release CI builds `benchmarks` after the library and Python bindings.
+The `benchmark_cdcl_propagation` benchmark uses the shared Benchmarking
+framework, with CNF construction outside the timed interval. Each sample
+times fresh CDCL state construction and unit propagation; correctness checks
+are outside timing. By default, it runs five samples for each of 10, 100 and
+500 variables. Use `--variables`, `--samples`, `--warmups` and `--summary`
+to customize the experiment and summary.
 
 ## Python bindings
 

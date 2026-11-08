@@ -22,7 +22,7 @@ endif()
 if(EXISTS "${PROJECT_SOURCE_DIR}/.git")
     # Pinned child commits guarantee their internal consistency.
     require_same_dependency_commit(Build CHAINS
-        "build" "utility|build" "threading|build" "testing|build")
+        "build" "utility|build" "threading|build" "testing|build" "benchmarking|build")
     require_same_dependency_commit(Utility CHAINS
         "utility" "threading|logging|utility")
 endif()
@@ -55,7 +55,7 @@ setup_project_library(
     LINK_LIBRARIES cdcl
 )
 
-setup_standalone_project_tests(
+setup_standalone_project(
     TARGET ariadne-cdcl
     TEST_DIRECTORY tests
     TEST_TARGET tests
