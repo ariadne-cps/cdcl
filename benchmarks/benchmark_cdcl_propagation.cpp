@@ -26,6 +26,7 @@
  *  \brief CDCL implication-chain benchmark using Ariadne Benchmarking.
  */
 
+#include "threading/threading_command_line_interface.hpp"
 #include "ariadne-benchmarking.hpp"
 #include "cdcl/cdcl_state.hpp"
 
@@ -69,6 +70,8 @@ int main(int argc,char const* argv[]) {
         matrix.add(variables).add(samples);
 
         Bench::CommandLine cli;
+        ThreadManager::instance();
+        cli.add(threading_command_line_contribution());
         cli.add_parameters(matrix);
         if(not cli.acquire(Bench::arguments(argc,argv)))return 0;
 
