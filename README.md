@@ -23,7 +23,7 @@ Public headers are under `include/cdcl`, with umbrella header
 regression tests under `tests`, performance benchmarks under `benchmarks`,
 Python bindings and tests under `python`, independent examples under
 `tutorials`, and the implementation journal under
-[`doc/designs/cdcl_design.md`](doc/designs/cdcl_design.md).
+[`doc/cdcl_design.md`](doc/cdcl_design.md).
 
 ## Solver and theory integration
 
