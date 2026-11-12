@@ -15,15 +15,15 @@
  *
  *  Ariadne CDCL is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with Ariadne CDCL.  If not, see <https://www.gnu.org/licenses/>.
+ *  along with Ariadne CDCL. If not, see <https://www.gnu.org/licenses/>.
  */
 
-/*! \file cdcl/cdcl_solver.hpp
- *  \brief CDCL solver search and theory integration interface.
+/** @file cdcl/cdcl_solver.hpp
+ *  @brief CDCL solver search and theory integration interface.
  */
 
 #ifndef ARIADNE_CDCL_SOLVER_HPP
@@ -41,8 +41,10 @@ namespace Ariadne {
 //! The complete-assignment callback must certify a model to return CERTIFIED.
 //! REJECTED means proven infeasible; UNKNOWN means inconclusive.
 enum class CdclCompletionStatus { CERTIFIED, REJECTED, UNKNOWN };
+/** @brief Distinguish a certified satisfying assignment, unsatisfiability and inconclusive search. */
 enum class CdclSolveStatus { SAT, UNSAT, UNKNOWN };
 
+/** @brief Callback that validates whether a complete assignment is a model. */
 using CdclCompletionCallback=
     std::function<CdclCompletionStatus(CdclAssignment const&)>;
 
@@ -51,15 +53,19 @@ using CdclCompletionCallback=
 //! Without a theory oracle or completion callback this solves pure Boolean CNF.
 class CdclSolver : protected CdclState {
   public:
+    /** @brief Initialize a solver from a fixed Boolean formula and a learned-clause limit. */
     CdclSolver(SizeType variable_count,
                std::vector<BooleanClause> const& original_clauses,
                SizeType learned_clause_limit = std::numeric_limits<SizeType>::max());
 
+    /** @brief Search for a model using optional theory consistency and completion checks. */
     CdclSolveStatus solve(
         CdclTheory* theory = nullptr,
         CdclCompletionCallback const& complete = {});
 
+    /** @brief Return the current Boolean assignment after search. */
     CdclAssignment assignment() const;
+    /** @brief Return counters collected during the solver's search. */
     CdclStatistics const& statistics() const { return _cdcl_statistics; }
 
   protected:
@@ -71,16 +77,23 @@ class CdclSolver : protected CdclState {
     using CdclState::_cdcl_statistics;
 
   private:
+    /** @brief Describe whether recursive search succeeded or requires backjumping. */
     struct SearchOutcome {
         Bool found = false;
         std::optional<SizeType> backjump_level;
+        /** @brief Represent a branch with no satisfying model. */
         static SearchOutcome exhausted() { return {}; }
+        /** @brief Represent a branch containing a satisfying assignment. */
         static SearchOutcome satisfied() { return {true,std::nullopt}; }
+        /** @brief Request a backjump to an earlier decision level. */
         static SearchOutcome backjump(SizeType level) { return {false,level}; }
     };
 
+    /** @brief Search Boolean assignments with learning and backtracking. */
     SearchOutcome _search_boolean();
+    /** @brief Analyze a Boolean or theory conflict and determine the backjump. */
     SearchOutcome _handle_conflict(SizeType clause_index, Bool theory_conflict);
+    /** @brief Propagate a child search outcome toward its parent decision level. */
     std::optional<SearchOutcome> _propagate_child_outcome(
         SearchOutcome const& outcome, SizeType parent_level);
 
