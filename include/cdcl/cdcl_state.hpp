@@ -33,6 +33,7 @@
 #include <cstdint>
 #include <optional>
 #include <vector>
+
 #include "cdcl/boolean_literal.hpp"
 
 namespace Ariadne {
@@ -69,7 +70,7 @@ class CdclState {
   protected:
     /** @brief Initialize a theory-independent CDCL state for the supplied clauses. */
     CdclState(SizeType variable_count,
-              std::vector<std::vector<BooleanLiteral>> const& original_clauses,
+              const std::vector<std::vector<BooleanLiteral>>& original_clauses,
               SizeType learned_clause_limit);
 
     /** @brief Store a variable's truth value, decision level and explanation. */
@@ -98,13 +99,13 @@ class CdclState {
     SizeType _clause_count() const;
 
     /** @brief Read a clause by stable index. */
-    std::vector<BooleanLiteral> const& _clause(SizeType index) const;
+    const std::vector<BooleanLiteral>& _clause(SizeType index) const;
 
     /** @brief Report whether the indexed clause was learned. */
     Bool _is_learned_clause(SizeType index) const;
 
     /** @brief Register a learned Boolean or theory clause. */
-    SizeType _add_learned_clause(std::vector<BooleanLiteral> const& clause, Bool theory_clause = false);
+    SizeType _add_learned_clause(const std::vector<BooleanLiteral>& clause, Bool theory_clause = false);
 
     /** @brief Report whether a clause was learned from theory reasoning. */
     Bool _is_theory_learned_clause(SizeType index) const;
@@ -133,20 +134,20 @@ class CdclState {
     /** @brief Propagate or detect conflict from a newly introduced clause. */
     Bool _process_pending_clause(SizeType clause_index);
     /** @brief Assign an implied literal with its reason clause. */
-    Void _assign_propagated_literal(BooleanLiteral literal,SizeType clause_index);
+    Void _assign_propagated_literal(BooleanLiteral literal, SizeType clause_index);
     /** @brief Record a detected Boolean conflict. */
     Bool _report_boolean_conflict(SizeType clause_index);
 
     /** @brief Check whether a clause contains either polarity of a variable. */
-    Bool _clause_contains_variable(std::vector<BooleanLiteral> const& clause, SizeType variable) const;
+    Bool _clause_contains_variable(const std::vector<BooleanLiteral>& clause, SizeType variable) const;
 
     /** @brief Count literals assigned at the current decision level. */
-    SizeType _current_level_literal_count(std::vector<BooleanLiteral> const& clause) const;
+    SizeType _current_level_literal_count(const std::vector<BooleanLiteral>& clause) const;
 
     /** @brief Resolve two clauses on the specified Boolean variable. */
     std::vector<BooleanLiteral> _resolve_on_variable(
-        std::vector<BooleanLiteral> const& lhs,
-        std::vector<BooleanLiteral> const& rhs,
+        const std::vector<BooleanLiteral>& lhs,
+        const std::vector<BooleanLiteral>& rhs,
         SizeType variable) const;
 
     /** @brief Compute a first-UIP learned clause and its backjump level. */
@@ -164,9 +165,8 @@ class CdclState {
     /** @brief Undo trail assignments above the specified decision level. */
     Void _backtrack_to_level(SizeType level);
 
-
     SizeType _variable_count;
-    std::vector<std::vector<BooleanLiteral>> const& _original_clauses;
+    const std::vector<std::vector<BooleanLiteral>>& _original_clauses;
     SizeType _learned_clause_limit;
     std::vector<AssignmentInfo> _assignment;
     std::vector<SizeType> _trail;
@@ -176,7 +176,7 @@ class CdclState {
     std::vector<SizeType> _learned_clause_activity;
     std::vector<SizeType> _learned_clause_generation;
     std::optional<SizeType> _last_boolean_conflict_clause;
-    std::vector<std::array<SizeType,2>> _watched_positions;
+    std::vector<std::array<SizeType, 2>> _watched_positions;
     std::vector<std::vector<SizeType>> _watch_lists;
     std::vector<SizeType> _pending_clauses;
     SizeType _pending_head = 0u;

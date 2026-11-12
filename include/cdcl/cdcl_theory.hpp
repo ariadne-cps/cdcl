@@ -31,6 +31,7 @@
 
 #include <optional>
 #include <vector>
+
 #include "cdcl/boolean_literal.hpp"
 
 namespace Ariadne {
@@ -42,7 +43,9 @@ using BooleanClause = std::vector<BooleanLiteral>;
 
 //! CONSISTENT means "not disproved", not a certified satisfying witness.
 //! UNKNOWN means the theory check was inconclusive, never a logical conflict.
-enum class CdclTheoryStatus { CONSISTENT, CONFLICT, UNKNOWN };
+enum class CdclTheoryStatus { CONSISTENT,
+                              CONFLICT,
+                              UNKNOWN };
 
 /** @brief Carry a theory check result and any conflict explanation. */
 class CdclTheoryFeedback {
@@ -57,7 +60,7 @@ class CdclTheoryFeedback {
     /** @brief Return the theory feedback classification. */
     CdclTheoryStatus status() const { return _status; }
     /** @brief Return the clause explaining a theory conflict. */
-    BooleanClause const& explanation() const { return _explanation; }
+    const BooleanClause& explanation() const { return _explanation; }
 
   private:
     /** @brief Construct feedback from a status and explaining clause. */
@@ -70,7 +73,7 @@ class CdclTheoryFeedback {
 //! the current assignment. Logical soundness is the theory solver's obligation.
 //! An empty conflict clause is valid only for a globally inconsistent theory.
 Void validate_cdcl_theory_feedback(
-    CdclTheoryFeedback const& feedback, CdclAssignment const& assignment);
+    const CdclTheoryFeedback& feedback, const CdclAssignment& assignment);
 
 //! Interface for partial assignment consistency checks.
 //! Complete model certification is theory-specific and stays in the caller.
@@ -80,7 +83,7 @@ class CdclTheory {
     virtual ~CdclTheory() = default;
     /** @brief Check a partial Boolean assignment for theory consistency. */
     virtual CdclTheoryFeedback check_partial(
-        CdclAssignment const& assignment) = 0;
+        const CdclAssignment& assignment) = 0;
 };
 
 } // namespace Ariadne

@@ -35,32 +35,31 @@ namespace Ariadne {
 
 CdclTheoryFeedback::CdclTheoryFeedback(
     CdclTheoryStatus status, BooleanClause explanation)
-    : _status(status), _explanation(std::move(explanation)) { }
+    : _status(status), _explanation(std::move(explanation)) {}
 
 CdclTheoryFeedback CdclTheoryFeedback::consistent() {
-    return CdclTheoryFeedback(CdclTheoryStatus::CONSISTENT,{});
+    return CdclTheoryFeedback(CdclTheoryStatus::CONSISTENT, {});
 }
 CdclTheoryFeedback CdclTheoryFeedback::unknown() {
-    return CdclTheoryFeedback(CdclTheoryStatus::UNKNOWN,{});
+    return CdclTheoryFeedback(CdclTheoryStatus::UNKNOWN, {});
 }
 CdclTheoryFeedback CdclTheoryFeedback::conflict(BooleanClause explanation) {
-    return CdclTheoryFeedback(CdclTheoryStatus::CONFLICT,std::move(explanation));
+    return CdclTheoryFeedback(CdclTheoryStatus::CONFLICT, std::move(explanation));
 }
 
 Void validate_cdcl_theory_feedback(
-    CdclTheoryFeedback const& feedback, CdclAssignment const& assignment)
-{
-    if(feedback.status()!=CdclTheoryStatus::CONFLICT) {
+    const CdclTheoryFeedback& feedback, const CdclAssignment& assignment) {
+    if (feedback.status() != CdclTheoryStatus::CONFLICT) {
         // The private constructor and the consistent/unknown factories
         // guarantee an empty explanation for non-conflict feedback.
         return;
     }
-    for(BooleanLiteral literal:feedback.explanation()) {
-        if(literal.variable()>=assignment.size()) {
+    for (BooleanLiteral literal: feedback.explanation()) {
+        if (literal.variable() >= assignment.size()) {
             throw std::out_of_range("Theory conflict variable exceeds assignment");
         }
-        auto const& value=assignment[literal.variable()];
-        if(not value.has_value() or *value==literal.positive()) {
+        const auto& value = assignment[literal.variable()];
+        if (not value.has_value() or *value == literal.positive()) {
             throw std::invalid_argument(
                 "Theory conflict explanation must be falsified by the assignment");
         }

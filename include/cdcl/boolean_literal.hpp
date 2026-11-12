@@ -43,33 +43,33 @@ namespace Ariadne {
 class BooleanLiteral {
   public:
     /** @brief Construct a literal from a zero-based variable index and its polarity. */
-    explicit BooleanLiteral(SizeType variable, Bool positive=true) {
-        if(variable>=static_cast<SizeType>(std::numeric_limits<Int>::max())) {
+    explicit BooleanLiteral(SizeType variable, Bool positive = true) {
+        if (variable >= static_cast<SizeType>(std::numeric_limits<Int>::max())) {
             throw std::out_of_range("Boolean variable exceeds DIMACS literal range");
         }
-        Int magnitude=static_cast<Int>(variable+1u);
-        _dimacs=positive ? magnitude : -magnitude;
+        Int magnitude = static_cast<Int>(variable + 1u);
+        _dimacs = positive ? magnitude : -magnitude;
     }
 
     /** @brief Decode a nonzero DIMACS signed literal, rejecting invalid values. */
     static BooleanLiteral from_dimacs(Int value) {
-        if(value==0 or value==std::numeric_limits<Int>::min()) {
+        if (value == 0 or value == std::numeric_limits<Int>::min()) {
             throw std::out_of_range("Invalid signed Boolean literal");
         }
-        return BooleanLiteral(value,RawTag{});
+        return BooleanLiteral(value, RawTag{});
     }
 
     /** @brief Return the zero-based variable index. */
     SizeType variable() const {
-        return static_cast<SizeType>(_dimacs<0 ? -_dimacs : _dimacs)-1u;
+        return static_cast<SizeType>(_dimacs < 0 ? -_dimacs : _dimacs) - 1u;
     }
     /** @brief Report whether this is a positive literal. */
-    Bool positive() const { return _dimacs>0; }
+    Bool positive() const { return _dimacs > 0; }
     /** @brief Encode the literal as a nonzero signed DIMACS integer. */
     Int dimacs() const { return _dimacs; }
     /** @brief Return the complementary Boolean literal. */
     BooleanLiteral negation() const {
-        return BooleanLiteral(-_dimacs,RawTag{});
+        return BooleanLiteral(-_dimacs, RawTag{});
     }
 
     /** @brief Negate a Boolean literal. */
@@ -77,23 +77,23 @@ class BooleanLiteral {
         return literal.negation();
     }
     /** @brief Compare literal variable and polarity. */
-    friend Bool operator==(BooleanLiteral lhs,BooleanLiteral rhs) {
-        return lhs._dimacs==rhs._dimacs;
+    friend Bool operator==(BooleanLiteral lhs, BooleanLiteral rhs) {
+        return lhs._dimacs == rhs._dimacs;
     }
     /** @brief Check whether two literals differ. */
-    friend Bool operator!=(BooleanLiteral lhs,BooleanLiteral rhs) {
-        return not (lhs==rhs);
+    friend Bool operator!=(BooleanLiteral lhs, BooleanLiteral rhs) {
+        return not(lhs == rhs);
     }
 
   private:
     /** @brief Distinguish an already validated internal DIMACS representation. */
-    struct RawTag { };
+    struct RawTag {};
     /** @brief Construct directly from an already validated DIMACS value. */
-    BooleanLiteral(Int value,RawTag) : _dimacs(value) { }
+    BooleanLiteral(Int value, RawTag) : _dimacs(value) {}
     Int _dimacs;
 };
 
-static_assert(sizeof(BooleanLiteral)==sizeof(Int));
+static_assert(sizeof(BooleanLiteral) == sizeof(Int));
 static_assert(std::is_trivially_copyable_v<BooleanLiteral>);
 
 } // namespace Ariadne

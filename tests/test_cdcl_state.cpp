@@ -27,258 +27,263 @@
  */
 
 #include <stdexcept>
-#include "ariadne-testing.hpp"
 #include <vector>
+
 #include "cdcl/cdcl_state.hpp"
+
+#include "ariadne-testing.hpp"
 
 using namespace Ariadne;
 
 namespace {
-using Clause=std::vector<BooleanLiteral>;
+using Clause = std::vector<BooleanLiteral>;
 
 class CoreProbe : public CdclState {
   public:
-    CoreProbe(SizeType variables, std::vector<Clause> const& clauses)
-        : CdclState(variables,clauses,0u) { }
-    using CdclState::_assign_literal;
-    using CdclState::_unit_propagate;
-    using CdclState::_decision_level;
-    using CdclState::_push_decision_level;
-    using CdclState::_backtrack_to_level;
+    CoreProbe(SizeType variables, const std::vector<Clause>& clauses)
+        : CdclState(variables, clauses, 0u) {}
+    using CdclState::_active_non_theory_learned_clause_count;
     using CdclState::_add_learned_clause;
     using CdclState::_analyze_boolean_conflict;
-    using CdclState::_next_unassigned_variable;
-    using CdclState::_maybe_prune_learned_clauses;
-    using CdclState::_cdcl_statistics;
+    using CdclState::_assign_literal;
     using CdclState::_assignment;
+    using CdclState::_backtrack_to_level;
+    using CdclState::_cdcl_statistics;
+    using CdclState::_clause;
+    using CdclState::_clause_count;
+    using CdclState::_decision_level;
+    using CdclState::_is_theory_learned_clause;
     using CdclState::_last_boolean_conflict_clause;
+    using CdclState::_learned_clause_locked;
+    using CdclState::_maybe_prune_learned_clauses;
+    using CdclState::_next_unassigned_variable;
+    using CdclState::_original_clause_count;
+    using CdclState::_propagation_head;
+    using CdclState::_push_decision_level;
+    using CdclState::_unit_propagate;
     using CdclState::_watch_lists;
     using CdclState::_watched_positions;
-    using CdclState::_propagation_head;
-    using CdclState::_original_clause_count;
-    using CdclState::_clause_count;
-    using CdclState::_clause;
-    using CdclState::_is_theory_learned_clause;
-    using CdclState::_active_non_theory_learned_clause_count;
-    using CdclState::_learned_clause_locked;
 };
-}
+} // namespace
 
 class TestCdclState : public Ariadne::Testing::ContextFixture {
   public:
     using ContextFixture::ContextFixture;
 
     Void test_cdcl_state() {
-    ARIADNE_TESTING_NOTE("Root unit propagation");
-    // Unit propagation with zero-based logical variables.
-    std::vector<Clause> clauses{
-        {BooleanLiteral(0u)},
-        {BooleanLiteral(0u,false),BooleanLiteral(1u)}
-    };
-    CoreProbe core(2u,clauses);
-    ARIADNE_TESTING_PROVE(core._unit_propagate());
-    ARIADNE_TESTING_PROVE(core._assignment[0u].value==1);
-    ARIADNE_TESTING_PROVE(core._assignment[1u].value==1);
-    ARIADNE_TESTING_PROVE(core._next_unassigned_variable()==2u);
-    ARIADNE_TESTING_PROVE(core._cdcl_statistics.boolean_propagations==2u);
+        ARIADNE_TESTING_NOTE("Root unit propagation");
+        // Unit propagation with zero-based logical variables.
+        std::vector<Clause> clauses{
+            {BooleanLiteral(0u)},
+            {BooleanLiteral(0u, false), BooleanLiteral(1u)}
+        };
+        CoreProbe core(2u, clauses);
+        ARIADNE_TESTING_PROVE(core._unit_propagate());
+        ARIADNE_TESTING_PROVE(core._assignment[0u].value == 1);
+        ARIADNE_TESTING_PROVE(core._assignment[1u].value == 1);
+        ARIADNE_TESTING_PROVE(core._next_unassigned_variable() == 2u);
+        ARIADNE_TESTING_PROVE(core._cdcl_statistics.boolean_propagations == 2u);
 
-    ARIADNE_TESTING_NOTE("Original clauses survive learned-clause insertion");
-    // The original clauses are untouched by learned-clause storage.
-    const SizeType learned=core._add_learned_clause({
-        BooleanLiteral(1u,false)
-    });
-    ARIADNE_TESTING_PROVE(learned==2u);
-    ARIADNE_TESTING_PROVE(not core._unit_propagate());
-    ARIADNE_TESTING_PROVE(core._last_boolean_conflict_clause==learned);
-    core._maybe_prune_learned_clauses(learned);
+        ARIADNE_TESTING_NOTE("Original clauses survive learned-clause insertion");
+        // The original clauses are untouched by learned-clause storage.
+        const SizeType learned = core._add_learned_clause({BooleanLiteral(1u, false)});
+        ARIADNE_TESTING_PROVE(learned == 2u);
+        ARIADNE_TESTING_PROVE(not core._unit_propagate());
+        ARIADNE_TESTING_PROVE(core._last_boolean_conflict_clause == learned);
+        core._maybe_prune_learned_clauses(learned);
 
-    ARIADNE_TESTING_NOTE("Decision assignment rollback");
-    // Backtracking restores only assignments made at the later level.
-    std::vector<Clause> no_clauses;
-    CoreProbe decisions(2u,no_clauses);
-    decisions._push_decision_level();
-    decisions._assign_literal(BooleanLiteral(0u));
-    ARIADNE_TESTING_PROVE(decisions._decision_level()==1u);
-    ARIADNE_TESTING_PROVE(decisions._next_unassigned_variable()==1u);
-    decisions._backtrack_to_level(0u);
-    ARIADNE_TESTING_PROVE(decisions._decision_level()==0u);
-    ARIADNE_TESTING_PROVE(decisions._next_unassigned_variable()==0u);
+        ARIADNE_TESTING_NOTE("Decision assignment rollback");
+        // Backtracking restores only assignments made at the later level.
+        std::vector<Clause> no_clauses;
+        CoreProbe decisions(2u, no_clauses);
+        decisions._push_decision_level();
+        decisions._assign_literal(BooleanLiteral(0u));
+        ARIADNE_TESTING_PROVE(decisions._decision_level() == 1u);
+        ARIADNE_TESTING_PROVE(decisions._next_unassigned_variable() == 1u);
+        decisions._backtrack_to_level(0u);
+        ARIADNE_TESTING_PROVE(decisions._decision_level() == 0u);
+        ARIADNE_TESTING_PROVE(decisions._next_unassigned_variable() == 0u);
 
-    ARIADNE_TESTING_NOTE("Nested backtrack and root propagation retention");
-    // An inner backtrack must not discard decisions at its parent level,
-    // and a backtrack to root must retain root-level unit propagations.
-    std::vector<Clause> root_clauses{{BooleanLiteral(0u)}};
-    CoreProbe nested(3u,root_clauses);
-    ARIADNE_TESTING_PROVE(nested._unit_propagate());
-    ARIADNE_TESTING_PROVE(nested._assignment[0u].value==1);
-    nested._push_decision_level();
-    nested._assign_literal(BooleanLiteral(1u));
-    nested._push_decision_level();
-    nested._assign_literal(BooleanLiteral(2u,false));
-    ARIADNE_TESTING_PROVE(nested._decision_level()==2u);
-    nested._backtrack_to_level(1u);
-    ARIADNE_TESTING_PROVE(nested._decision_level()==1u);
-    ARIADNE_TESTING_PROVE(nested._assignment[0u].value==1);
-    ARIADNE_TESTING_PROVE(nested._assignment[1u].value==1);
-    ARIADNE_TESTING_PROVE(nested._assignment[2u].value<0);
-    ARIADNE_TESTING_PROVE(nested._next_unassigned_variable()==2u);
-    nested._backtrack_to_level(1u);
-    ARIADNE_TESTING_PROVE(nested._assignment[1u].value==1);
-    nested._backtrack_to_level(0u);
-    ARIADNE_TESTING_PROVE(nested._decision_level()==0u);
-    ARIADNE_TESTING_PROVE(nested._assignment[0u].value==1);
-    ARIADNE_TESTING_PROVE(nested._assignment[1u].value<0);
-    ARIADNE_TESTING_PROVE(nested._next_unassigned_variable()==1u);
-    ARIADNE_TESTING_PROVE(nested._unit_propagate());
-    ARIADNE_TESTING_PROVE(nested._cdcl_statistics.boolean_propagations==1u);
+        ARIADNE_TESTING_NOTE("Nested backtrack and root propagation retention");
+        // An inner backtrack must not discard decisions at its parent level,
+        // and a backtrack to root must retain root-level unit propagations.
+        std::vector<Clause> root_clauses{{BooleanLiteral(0u)}};
+        CoreProbe nested(3u, root_clauses);
+        ARIADNE_TESTING_PROVE(nested._unit_propagate());
+        ARIADNE_TESTING_PROVE(nested._assignment[0u].value == 1);
+        nested._push_decision_level();
+        nested._assign_literal(BooleanLiteral(1u));
+        nested._push_decision_level();
+        nested._assign_literal(BooleanLiteral(2u, false));
+        ARIADNE_TESTING_PROVE(nested._decision_level() == 2u);
+        nested._backtrack_to_level(1u);
+        ARIADNE_TESTING_PROVE(nested._decision_level() == 1u);
+        ARIADNE_TESTING_PROVE(nested._assignment[0u].value == 1);
+        ARIADNE_TESTING_PROVE(nested._assignment[1u].value == 1);
+        ARIADNE_TESTING_PROVE(nested._assignment[2u].value < 0);
+        ARIADNE_TESTING_PROVE(nested._next_unassigned_variable() == 2u);
+        nested._backtrack_to_level(1u);
+        ARIADNE_TESTING_PROVE(nested._assignment[1u].value == 1);
+        nested._backtrack_to_level(0u);
+        ARIADNE_TESTING_PROVE(nested._decision_level() == 0u);
+        ARIADNE_TESTING_PROVE(nested._assignment[0u].value == 1);
+        ARIADNE_TESTING_PROVE(nested._assignment[1u].value < 0);
+        ARIADNE_TESTING_PROVE(nested._next_unassigned_variable() == 1u);
+        ARIADNE_TESTING_PROVE(nested._unit_propagate());
+        ARIADNE_TESTING_PROVE(nested._cdcl_statistics.boolean_propagations == 1u);
 
-    ARIADNE_TESTING_EXPECT_THROWS(std::out_of_range, nested._backtrack_to_level(1u));
+        ARIADNE_TESTING_EXPECT_THROWS(std::out_of_range, nested._backtrack_to_level(1u));
 
-    ARIADNE_TESTING_NOTE("Watch relocation and implied third literal");
-    // Watch movement: a falsified watch moves to a third literal.
-    // A second false decision then forces that third literal.
-    std::vector<Clause> ternary{{
-        BooleanLiteral(0u),BooleanLiteral(1u),BooleanLiteral(2u)}};
-    CoreProbe watched(3u,ternary);
-    ARIADNE_TESTING_PROVE(watched._unit_propagate());
-    watched._push_decision_level();
-    watched._assign_literal(BooleanLiteral(0u,false));
-    ARIADNE_TESTING_PROVE(watched._unit_propagate());
-    ARIADNE_TESTING_PROVE(watched._watched_positions[0u][0u]==2u);
-    watched._assign_literal(BooleanLiteral(1u,false));
-    ARIADNE_TESTING_PROVE(watched._unit_propagate());
-    ARIADNE_TESTING_PROVE(watched._assignment[2u].value==1);
-    ARIADNE_TESTING_PROVE(watched._assignment[2u].reason_clause==std::optional<SizeType>(0u));
-    ARIADNE_TESTING_PROVE(watched._cdcl_statistics.boolean_propagations==1u);
-    ARIADNE_TESTING_PROVE(watched._propagation_head==3u);
+        ARIADNE_TESTING_NOTE("Watch relocation and implied third literal");
+        // Watch movement: a falsified watch moves to a third literal.
+        // A second false decision then forces that third literal.
+        std::vector<Clause> ternary{
+            {BooleanLiteral(0u), BooleanLiteral(1u), BooleanLiteral(2u)}
+        };
+        CoreProbe watched(3u, ternary);
+        ARIADNE_TESTING_PROVE(watched._unit_propagate());
+        watched._push_decision_level();
+        watched._assign_literal(BooleanLiteral(0u, false));
+        ARIADNE_TESTING_PROVE(watched._unit_propagate());
+        ARIADNE_TESTING_PROVE(watched._watched_positions[0u][0u] == 2u);
+        watched._assign_literal(BooleanLiteral(1u, false));
+        ARIADNE_TESTING_PROVE(watched._unit_propagate());
+        ARIADNE_TESTING_PROVE(watched._assignment[2u].value == 1);
+        ARIADNE_TESTING_PROVE(watched._assignment[2u].reason_clause == std::optional<SizeType>(0u));
+        ARIADNE_TESTING_PROVE(watched._cdcl_statistics.boolean_propagations == 1u);
+        ARIADNE_TESTING_PROVE(watched._propagation_head == 3u);
 
-    ARIADNE_TESTING_NOTE("Pending theory clause after backjump");
-    // After a backjump, a newly learned clause must be inspected even
-    // when no retained assignment generates a fresh watch event.
-    std::vector<Clause> fixed_root{{BooleanLiteral(0u)}};
-    CoreProbe learning(2u,fixed_root);
-    ARIADNE_TESTING_PROVE(learning._unit_propagate());
-    learning._push_decision_level();
-    learning._assign_literal(BooleanLiteral(1u,false));
-    const SizeType theory_clause=learning._add_learned_clause({
-        BooleanLiteral(0u,false),BooleanLiteral(1u)},true);
-    ARIADNE_TESTING_PROVE(not learning._unit_propagate());
-    ARIADNE_TESTING_PROVE(learning._last_boolean_conflict_clause==theory_clause);
-    learning._backtrack_to_level(0u);
-    ARIADNE_TESTING_PROVE(learning._unit_propagate());
-    ARIADNE_TESTING_PROVE(learning._assignment[0u].value==1);
-    ARIADNE_TESTING_PROVE(learning._assignment[1u].value==1);
-    ARIADNE_TESTING_PROVE(learning._assignment[1u].reason_clause==std::optional<SizeType>(theory_clause));
-    ARIADNE_TESTING_PROVE(learning._cdcl_statistics.theory_learned_clause_propagations==1u);
+        ARIADNE_TESTING_NOTE("Pending theory clause after backjump");
+        // After a backjump, a newly learned clause must be inspected even
+        // when no retained assignment generates a fresh watch event.
+        std::vector<Clause> fixed_root{{BooleanLiteral(0u)}};
+        CoreProbe learning(2u, fixed_root);
+        ARIADNE_TESTING_PROVE(learning._unit_propagate());
+        learning._push_decision_level();
+        learning._assign_literal(BooleanLiteral(1u, false));
+        const SizeType theory_clause = learning._add_learned_clause({BooleanLiteral(0u, false), BooleanLiteral(1u)}, true);
+        ARIADNE_TESTING_PROVE(not learning._unit_propagate());
+        ARIADNE_TESTING_PROVE(learning._last_boolean_conflict_clause == theory_clause);
+        learning._backtrack_to_level(0u);
+        ARIADNE_TESTING_PROVE(learning._unit_propagate());
+        ARIADNE_TESTING_PROVE(learning._assignment[0u].value == 1);
+        ARIADNE_TESTING_PROVE(learning._assignment[1u].value == 1);
+        ARIADNE_TESTING_PROVE(learning._assignment[1u].reason_clause == std::optional<SizeType>(theory_clause));
+        ARIADNE_TESTING_PROVE(learning._cdcl_statistics.theory_learned_clause_propagations == 1u);
 
-    ARIADNE_TESTING_NOTE("Delayed watches for a learned ternary clause");
-    // A conflict clause inserted at decision level two has every
-    // literal false. After jumping to level one, its third literal
-    // becomes unit, and one of its watches must follow that literal.
-    std::vector<Clause> none;
-    CoreProbe delayed(3u,none);
-    delayed._push_decision_level();
-    delayed._assign_literal(BooleanLiteral(0u));
-    delayed._assign_literal(BooleanLiteral(1u));
-    delayed._push_decision_level();
-    delayed._assign_literal(BooleanLiteral(2u,false));
-    const SizeType delayed_learned=delayed._add_learned_clause({
-        BooleanLiteral(0u,false),
-        BooleanLiteral(1u,false),
-        BooleanLiteral(2u)});
-    ARIADNE_TESTING_PROVE(not delayed._unit_propagate());
-    ARIADNE_TESTING_PROVE(delayed._last_boolean_conflict_clause==delayed_learned);
-    delayed._backtrack_to_level(1u);
-    ARIADNE_TESTING_PROVE(delayed._unit_propagate());
-    ARIADNE_TESTING_PROVE(delayed._assignment[2u].value==1);
-    ARIADNE_TESTING_PROVE(delayed._assignment[2u].reason_clause==std::optional<SizeType>(delayed_learned));
-    ARIADNE_TESTING_PROVE(delayed._watched_positions[delayed_learned][0u]==2u
-        or delayed._watched_positions[delayed_learned][1u]==2u);
+        ARIADNE_TESTING_NOTE("Delayed watches for a learned ternary clause");
+        // A conflict clause inserted at decision level two has every
+        // literal false. After jumping to level one, its third literal
+        // becomes unit, and one of its watches must follow that literal.
+        std::vector<Clause> none;
+        CoreProbe delayed(3u, none);
+        delayed._push_decision_level();
+        delayed._assign_literal(BooleanLiteral(0u));
+        delayed._assign_literal(BooleanLiteral(1u));
+        delayed._push_decision_level();
+        delayed._assign_literal(BooleanLiteral(2u, false));
+        const SizeType delayed_learned = delayed._add_learned_clause({BooleanLiteral(0u, false),
+                                                                      BooleanLiteral(1u, false),
+                                                                      BooleanLiteral(2u)});
+        ARIADNE_TESTING_PROVE(not delayed._unit_propagate());
+        ARIADNE_TESTING_PROVE(delayed._last_boolean_conflict_clause == delayed_learned);
+        delayed._backtrack_to_level(1u);
+        ARIADNE_TESTING_PROVE(delayed._unit_propagate());
+        ARIADNE_TESTING_PROVE(delayed._assignment[2u].value == 1);
+        ARIADNE_TESTING_PROVE(delayed._assignment[2u].reason_clause == std::optional<SizeType>(delayed_learned));
+        ARIADNE_TESTING_PROVE(delayed._watched_positions[delayed_learned][0u] == 2u or delayed._watched_positions[delayed_learned][1u] == 2u);
 
-    ARIADNE_TESTING_NOTE("Repeated literals and tautological clauses");
-    // Repeated literals are semantically unit, whereas a tautological
-    // binary clause must never force an assignment.
-    std::vector<Clause> duplicates{{BooleanLiteral(0u),BooleanLiteral(0u)},
-                                  {BooleanLiteral(1u),BooleanLiteral(1u,false)}};
-    CoreProbe repeated(2u,duplicates);
-    ARIADNE_TESTING_PROVE(repeated._unit_propagate());
-    ARIADNE_TESTING_PROVE(repeated._assignment[0u].value==1);
-    ARIADNE_TESTING_PROVE(repeated._assignment[1u].value<0);
-    ARIADNE_TESTING_PROVE(repeated._cdcl_statistics.boolean_propagations==1u);
+        ARIADNE_TESTING_NOTE("Repeated literals and tautological clauses");
+        // Repeated literals are semantically unit, whereas a tautological
+        // binary clause must never force an assignment.
+        std::vector<Clause> duplicates{
+            {BooleanLiteral(0u), BooleanLiteral(0u)},
+            {BooleanLiteral(1u), BooleanLiteral(1u, false)}
+        };
+        CoreProbe repeated(2u, duplicates);
+        ARIADNE_TESTING_PROVE(repeated._unit_propagate());
+        ARIADNE_TESTING_PROVE(repeated._assignment[0u].value == 1);
+        ARIADNE_TESTING_PROVE(repeated._assignment[1u].value < 0);
+        ARIADNE_TESTING_PROVE(repeated._cdcl_statistics.boolean_propagations == 1u);
 
-    ARIADNE_TESTING_NOTE("Empty clause conflict");
-    std::vector<Clause> empty{{}};
-    CoreProbe contradictory(0u,empty);
-    ARIADNE_TESTING_PROVE(not contradictory._unit_propagate());
-    ARIADNE_TESTING_PROVE(contradictory._last_boolean_conflict_clause==std::optional<SizeType>(0u));
+        ARIADNE_TESTING_NOTE("Empty clause conflict");
+        std::vector<Clause> empty{{}};
+        CoreProbe contradictory(0u, empty);
+        ARIADNE_TESTING_PROVE(not contradictory._unit_propagate());
+        ARIADNE_TESTING_PROVE(contradictory._last_boolean_conflict_clause == std::optional<SizeType>(0u));
 
-    ARIADNE_TESTING_NOTE("Clause classification and live reason locks");
-    // Learned-clause queries distinguish original, theory and Boolean
-    // clauses. Locks follow live propagation reasons, never decisions or
-    // assignments removed by backtracking.
-    std::vector<Clause> original{{BooleanLiteral(0u),BooleanLiteral(1u)}};
-    CoreProbe locks(3u,original);
-    ARIADNE_TESTING_PROVE(not locks._is_theory_learned_clause(0u));
-    ARIADNE_TESTING_PROVE(locks._active_non_theory_learned_clause_count()==0u);
-    locks._maybe_prune_learned_clauses(0u);
-    ARIADNE_TESTING_PROVE(locks._cdcl_statistics.learned_clause_pruning_runs==0u);
-    SizeType const theory_unit=locks._add_learned_clause({BooleanLiteral(0u)},true);
-    Clause const binary{BooleanLiteral(1u),BooleanLiteral(2u)};
-    SizeType const boolean_binary=locks._add_learned_clause(binary);
-    ARIADNE_TESTING_PROVE(locks._is_theory_learned_clause(theory_unit));
-    ARIADNE_TESTING_PROVE(not locks._is_theory_learned_clause(boolean_binary));
-    ARIADNE_TESTING_PROVE(locks._active_non_theory_learned_clause_count()==1u);
-    ARIADNE_TESTING_PROVE(not locks._learned_clause_locked(theory_unit));
-    ARIADNE_TESTING_PROVE(not locks._learned_clause_locked(boolean_binary));
-    ARIADNE_TESTING_PROVE(locks._unit_propagate());
-    ARIADNE_TESTING_NOTE("A live theory reason must lock its clause");
-    ARIADNE_TESTING_PROVE(locks._learned_clause_locked(theory_unit));
-    ARIADNE_TESTING_PROVE(not locks._learned_clause_locked(boolean_binary));
-    locks._push_decision_level();
-    locks._assign_literal(BooleanLiteral(1u,false));
-    ARIADNE_TESTING_PROVE(not locks._learned_clause_locked(boolean_binary));
-    ARIADNE_TESTING_PROVE(locks._unit_propagate());
-    ARIADNE_TESTING_PROVE(locks._assignment[2u].value==1);
-    ARIADNE_TESTING_PROVE(locks._assignment[2u].reason_clause==boolean_binary);
-    ARIADNE_TESTING_NOTE("Boolean propagation must lock its reason clause");
-    ARIADNE_TESTING_PROVE(locks._learned_clause_locked(boolean_binary));
-    locks._maybe_prune_learned_clauses(boolean_binary);
-    ARIADNE_TESTING_PROVE(locks._cdcl_statistics.learned_clause_pruning_runs==1u);
-    ARIADNE_TESTING_PROVE(locks._cdcl_statistics.learned_clauses_pruned==0u);
-    ARIADNE_TESTING_PROVE(locks._clause_count()==3u and locks._original_clause_count()==1u);
-    ARIADNE_TESTING_PROVE(locks._clause(boolean_binary)==binary);
-    locks._backtrack_to_level(0u);
-    ARIADNE_TESTING_NOTE("Backtracking must release the Boolean reason lock");
-    ARIADNE_TESTING_PROVE(not locks._learned_clause_locked(boolean_binary));
-    ARIADNE_TESTING_PROVE(locks._learned_clause_locked(theory_unit));
-    locks._push_decision_level();
-    locks._assign_literal(BooleanLiteral(2u,false));
-    ARIADNE_TESTING_PROVE(locks._unit_propagate());
-    ARIADNE_TESTING_NOTE("Reduction must preserve clauses needed after backtracking");
-    ARIADNE_TESTING_PROVE(locks._assignment[1u].value==1 and locks._assignment[1u].reason_clause==boolean_binary);
+        ARIADNE_TESTING_NOTE("Clause classification and live reason locks");
+        // Learned-clause queries distinguish original, theory and Boolean
+        // clauses. Locks follow live propagation reasons, never decisions or
+        // assignments removed by backtracking.
+        std::vector<Clause> original{
+            {BooleanLiteral(0u), BooleanLiteral(1u)}
+        };
+        CoreProbe locks(3u, original);
+        ARIADNE_TESTING_PROVE(not locks._is_theory_learned_clause(0u));
+        ARIADNE_TESTING_PROVE(locks._active_non_theory_learned_clause_count() == 0u);
+        locks._maybe_prune_learned_clauses(0u);
+        ARIADNE_TESTING_PROVE(locks._cdcl_statistics.learned_clause_pruning_runs == 0u);
+        const SizeType theory_unit = locks._add_learned_clause({BooleanLiteral(0u)}, true);
+        const Clause binary{BooleanLiteral(1u), BooleanLiteral(2u)};
+        const SizeType boolean_binary = locks._add_learned_clause(binary);
+        ARIADNE_TESTING_PROVE(locks._is_theory_learned_clause(theory_unit));
+        ARIADNE_TESTING_PROVE(not locks._is_theory_learned_clause(boolean_binary));
+        ARIADNE_TESTING_PROVE(locks._active_non_theory_learned_clause_count() == 1u);
+        ARIADNE_TESTING_PROVE(not locks._learned_clause_locked(theory_unit));
+        ARIADNE_TESTING_PROVE(not locks._learned_clause_locked(boolean_binary));
+        ARIADNE_TESTING_PROVE(locks._unit_propagate());
+        ARIADNE_TESTING_NOTE("A live theory reason must lock its clause");
+        ARIADNE_TESTING_PROVE(locks._learned_clause_locked(theory_unit));
+        ARIADNE_TESTING_PROVE(not locks._learned_clause_locked(boolean_binary));
+        locks._push_decision_level();
+        locks._assign_literal(BooleanLiteral(1u, false));
+        ARIADNE_TESTING_PROVE(not locks._learned_clause_locked(boolean_binary));
+        ARIADNE_TESTING_PROVE(locks._unit_propagate());
+        ARIADNE_TESTING_PROVE(locks._assignment[2u].value == 1);
+        ARIADNE_TESTING_PROVE(locks._assignment[2u].reason_clause == boolean_binary);
+        ARIADNE_TESTING_NOTE("Boolean propagation must lock its reason clause");
+        ARIADNE_TESTING_PROVE(locks._learned_clause_locked(boolean_binary));
+        locks._maybe_prune_learned_clauses(boolean_binary);
+        ARIADNE_TESTING_PROVE(locks._cdcl_statistics.learned_clause_pruning_runs == 1u);
+        ARIADNE_TESTING_PROVE(locks._cdcl_statistics.learned_clauses_pruned == 0u);
+        ARIADNE_TESTING_PROVE(locks._clause_count() == 3u and locks._original_clause_count() == 1u);
+        ARIADNE_TESTING_PROVE(locks._clause(boolean_binary) == binary);
+        locks._backtrack_to_level(0u);
+        ARIADNE_TESTING_NOTE("Backtracking must release the Boolean reason lock");
+        ARIADNE_TESTING_PROVE(not locks._learned_clause_locked(boolean_binary));
+        ARIADNE_TESTING_PROVE(locks._learned_clause_locked(theory_unit));
+        locks._push_decision_level();
+        locks._assign_literal(BooleanLiteral(2u, false));
+        ARIADNE_TESTING_PROVE(locks._unit_propagate());
+        ARIADNE_TESTING_NOTE("Reduction must preserve clauses needed after backtracking");
+        ARIADNE_TESTING_PROVE(locks._assignment[1u].value == 1 and locks._assignment[1u].reason_clause == boolean_binary);
 
-    ARIADNE_TESTING_NOTE("Deferred reduction retains old long clauses");
-    // Reduction is deliberately deferred even for old, unprotected, long
-    // clauses. These learned copies are entailed by the original formula.
-    std::vector<Clause> long_original{{BooleanLiteral(0u),BooleanLiteral(1u),BooleanLiteral(2u)}};
-    CoreProbe retained(3u,long_original);
-    for(SizeType i=0u;i<4u;++i) {
-        retained._add_learned_clause(long_original[0u]);
+        ARIADNE_TESTING_NOTE("Deferred reduction retains old long clauses");
+        // Reduction is deliberately deferred even for old, unprotected, long
+        // clauses. These learned copies are entailed by the original formula.
+        std::vector<Clause> long_original{
+            {BooleanLiteral(0u), BooleanLiteral(1u), BooleanLiteral(2u)}
+        };
+        CoreProbe retained(3u, long_original);
+        for (SizeType i = 0u; i < 4u; ++i) {
+            retained._add_learned_clause(long_original[0u]);
+        }
+        retained._maybe_prune_learned_clauses(4u);
+        ARIADNE_TESTING_NOTE("Deferred reduction must retain even old candidate clauses");
+        ARIADNE_TESTING_PROVE(retained._clause_count() == 5u and retained._cdcl_statistics.learned_clauses_pruned == 0u);
+        ARIADNE_TESTING_PROVE(retained._cdcl_statistics.learned_clause_pruning_runs == 1u);
+        for (SizeType i = 1u; i < 5u; ++i) {
+            ARIADNE_TESTING_PROVE(retained._clause(i) == long_original[0u]);
+        }
+        ARIADNE_TESTING_PROVE(retained._unit_propagate());
+        retained._push_decision_level();
+        retained._assign_literal(BooleanLiteral(0u, false));
+        ARIADNE_TESTING_PROVE(retained._unit_propagate());
+        retained._assign_literal(BooleanLiteral(1u, false));
+        ARIADNE_TESTING_PROVE(retained._unit_propagate());
+        ARIADNE_TESTING_PROVE(retained._assignment[2u].value == 1);
     }
-    retained._maybe_prune_learned_clauses(4u);
-    ARIADNE_TESTING_NOTE("Deferred reduction must retain even old candidate clauses");
-    ARIADNE_TESTING_PROVE(retained._clause_count()==5u and retained._cdcl_statistics.learned_clauses_pruned==0u);
-    ARIADNE_TESTING_PROVE(retained._cdcl_statistics.learned_clause_pruning_runs==1u);
-    for(SizeType i=1u;i<5u;++i) { ARIADNE_TESTING_PROVE(retained._clause(i)==long_original[0u]); }
-    ARIADNE_TESTING_PROVE(retained._unit_propagate());
-    retained._push_decision_level();
-    retained._assign_literal(BooleanLiteral(0u,false));
-    ARIADNE_TESTING_PROVE(retained._unit_propagate());
-    retained._assign_literal(BooleanLiteral(1u,false));
-    ARIADNE_TESTING_PROVE(retained._unit_propagate());
-    ARIADNE_TESTING_PROVE(retained._assignment[2u].value==1);
-}
-
 };
 
 int main(int argc, char** argv) {
