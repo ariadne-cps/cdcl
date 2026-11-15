@@ -30,6 +30,7 @@
 #include <stdexcept>
 
 #include "cdcl/boolean_literal.hpp"
+#include "logging/test_runner.hpp"
 
 #include "ariadne-testing.hpp"
 
@@ -81,5 +82,5 @@ int main(int argc, char** argv) {
     ARIADNE_TESTING_ADD_TEST(TestBooleanLiteral, test_index_and_negation);
     ARIADNE_TESTING_ADD_TEST(TestBooleanLiteral, test_dimacs_round_trip_and_boundaries);
     ARIADNE_TESTING_ADD_TEST(TestBooleanLiteral, test_invalid_ranges);
-    return ARIADNE_TESTING_RUN_TESTS_WITH_ARGS(argc, argv);
+    return Ariadne::Testing::run_logging_suite(ariadne_test_suite, argc, argv);
 }

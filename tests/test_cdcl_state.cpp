@@ -30,6 +30,7 @@
 #include <vector>
 
 #include "cdcl/cdcl_state.hpp"
+#include "logging/test_runner.hpp"
 
 #include "ariadne-testing.hpp"
 
@@ -289,5 +290,5 @@ class TestCdclState : public Ariadne::Testing::ContextFixture {
 int main(int argc, char** argv) {
     ARIADNE_TESTING_SUITE("test_cdcl_state");
     ARIADNE_TESTING_ADD_TEST(TestCdclState, test_cdcl_state);
-    return ARIADNE_TESTING_RUN_TESTS_WITH_ARGS(argc, argv);
+    return Ariadne::Testing::run_logging_suite(ariadne_test_suite, argc, argv);
 }
